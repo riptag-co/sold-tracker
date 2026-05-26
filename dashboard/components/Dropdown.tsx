@@ -42,9 +42,11 @@ export default function Dropdown<T extends string>({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`bg-white/[0.04] border border-line-strong rounded-full pl-4 pr-3 py-2 text-[13px] font-semibold text-white inline-flex items-center gap-2 hover:bg-white/[0.07] transition-colors active:scale-[0.97] ${
-          open ? "bg-white/[0.07]" : ""
-        }`}
+        style={{
+          background: open ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.14)",
+        }}
+        className="rounded-full pl-4 pr-3 py-2 text-[13px] font-semibold text-white inline-flex items-center gap-2 transition-colors active:scale-[0.97]"
       >
         <span className="truncate max-w-[160px]">{current?.label ?? "Select"}</span>
         <svg
@@ -66,18 +68,24 @@ export default function Dropdown<T extends string>({
 
       {open && (
         <div
-          className="absolute top-full left-0 mt-2 z-50 animate-dropdown-in origin-top-left"
           role="listbox"
-          // Width is independent of trigger so longer labels stay readable.
-          style={{ minWidth: 200 }}
+          className="absolute top-full left-0 mt-2 animate-dropdown-in origin-top-left"
+          style={{
+            zIndex: 9999,
+            minWidth: 200,
+          }}
         >
           <div
-            className="rounded-2xl py-1 overflow-y-auto max-h-[260px] overscroll-contain"
             style={{
-              background: "#15151A",
-              border: "1px solid rgba(255,255,255,0.14)",
+              background: "#1B1B22",
+              border: "1px solid rgba(255,255,255,0.18)",
+              borderRadius: 16,
+              padding: "4px 0",
+              maxHeight: 260,
+              overflowY: "auto",
               boxShadow:
-                "0 24px 56px -12px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.04) inset",
+                "0 24px 60px -12px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.05) inset",
+              opacity: 1,
             }}
           >
             {options.map((o) => {
@@ -92,20 +100,50 @@ export default function Dropdown<T extends string>({
                     onChange(o.value);
                     setOpen(false);
                   }}
-                  className={`flex items-center justify-between w-full text-left px-4 py-2.5 text-[14px] font-medium transition-colors ${
-                    selected
-                      ? "text-white bg-white/[0.08]"
-                      : "text-white/85 hover:text-white hover:bg-white/[0.05]"
-                  }`}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "10px 16px",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: "#ffffff",
+                    background: selected
+                      ? "rgba(255,255,255,0.08)"
+                      : "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    transition: "background 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!selected) {
+                      (e.currentTarget as HTMLElement).style.background =
+                        "rgba(255,255,255,0.05)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!selected) {
+                      (e.currentTarget as HTMLElement).style.background = "transparent";
+                    }
+                  }}
                 >
-                  <span className="truncate pr-2">{o.label}</span>
+                  <span style={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    paddingRight: 8,
+                  }}>
+                    {o.label}
+                  </span>
                   {selected && (
                     <svg
                       width="13"
                       height="13"
                       viewBox="0 0 12 12"
                       fill="none"
-                      className="text-money flex-shrink-0"
+                      style={{ color: "#34D399", flexShrink: 0 }}
                     >
                       <path
                         d="M2.5 6.5L5 9L9.5 3.5"
