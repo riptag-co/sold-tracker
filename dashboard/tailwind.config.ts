@@ -59,6 +59,7 @@ export default {
         "bar-fill": "barFill 1s cubic-bezier(0.16, 1, 0.3, 1) both",
         "live-pulse": "livePulse 2.2s ease-out infinite",
         shimmer: "shimmer 2s linear infinite",
+        shake: "shake 0.45s cubic-bezier(.36,.07,.19,.97) both",
       },
       keyframes: {
         fadeUp: {
@@ -104,6 +105,11 @@ export default {
         shimmer: {
           from: { backgroundPosition: "200% 0" },
           to: { backgroundPosition: "-200% 0" },
+        },
+        shake: {
+          "0%, 100%": { transform: "translateX(0)" },
+          "20%, 60%": { transform: "translateX(-10px)" },
+          "40%, 80%": { transform: "translateX(10px)" },
         },
       },
       transitionTimingFunction: {

@@ -1,5 +1,6 @@
 import PairPanel from "./PairPanel";
 import DevicesPanel from "./DevicesPanel";
+import PinPanel from "./PinPanel";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -7,19 +8,26 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
   const supabase = await createClient();
 
-  const [{ data: tokens }, { data: errors }, { data: stores }] =
-    await Promise.all([
-      supabase
-        .from("device_tokens")
-        .select("id, label, created_at, last_used_at, revoked_at")
-        .is("revoked_at", null)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("fetch_errors")
-        .select("store_id, message, occurred_at")
-        .order("occurred_at", { ascending: false }),
-      supabase.from("stores").select("id, username"),
-    ]);
+  const [
+    { data: tokens },
+    { data: errors },
+    { data: stores },
+    { data: control },
+  ] = await Promise.all([
+    supabase
+      .from("device_tokens")
+      .select("id, label, created_at, last_used_at, revoked_at")
+      .is("revoked_at", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("fetch_errors")
+      .select("store_id, message, occurred_at")
+      .order("occurred_at", { ascending: false }),
+    supabase.from("stores").select("id, username"),
+    supabase.from("control").select("pin_hash").eq("id", 1).maybeSingle(),
+  ]);
+
+  const hasPin = !!control?.pin_hash;
 
   const storesById = new Map((stores ?? []).map((s) => [s.id, s.username as string]));
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -51,6 +59,16 @@ export default async function SettingsPage() {
           Paired devices
         </h2>
         <DevicesPanel initial={tokens ?? []} />
+      </section>
+
+      <section
+        className="glass p-6 animate-fade-up"
+        style={{ animationDelay: "90ms" }}
+      >
+        <h2 className="text-[16px] font-semibold mb-1 tracking-tight">
+          Passcode
+        </h2>
+        <PinPanel hasPin={hasPin} />
       </section>
 
       {/* Issues — live errors from the extension's last poll */}
