@@ -33,9 +33,7 @@ export default function Dropdown<T extends string>({
   }
 
   function toggle() {
-    if (!open) {
-      recomputePosition();
-    }
+    if (!open) recomputePosition();
     setOpen((v) => !v);
   }
 
@@ -54,22 +52,37 @@ export default function Dropdown<T extends string>({
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
-    function onScrollOrResize() {
+    function reflow() {
       recomputePosition();
     }
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
-    window.addEventListener("resize", onScrollOrResize);
-    window.addEventListener("scroll", onScrollOrResize, true);
+    window.addEventListener("resize", reflow);
+    window.addEventListener("scroll", reflow, true);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
-      window.removeEventListener("resize", onScrollOrResize);
-      window.removeEventListener("scroll", onScrollOrResize, true);
+      window.removeEventListener("resize", reflow);
+      window.removeEventListener("scroll", reflow, true);
     };
   }, [open]);
 
   const current = options.find((o) => o.value === value);
+
+  // Hard-coded styles — no Tailwind utilities anywhere on the panel so
+  // nothing can override them. Background is a clearly lighter shade
+  // than any glass card on the page.
+  const panelStyle: React.CSSProperties = {
+    background: "#26262E",
+    border: "1px solid rgba(255,255,255,0.22)",
+    borderRadius: 16,
+    padding: "4px 0",
+    maxHeight: 280,
+    overflowY: "auto",
+    boxShadow:
+      "0 28px 64px -12px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.06) inset",
+    opacity: 1,
+  };
 
   return (
     <div className={`inline-block ${className}`}>
@@ -106,27 +119,15 @@ export default function Dropdown<T extends string>({
           <div
             ref={panelRef}
             role="listbox"
-            className="animate-dropdown-in origin-top-left"
             style={{
               position: "absolute",
               top: pos.top,
               left: pos.left,
               minWidth: pos.minWidth,
-              zIndex: 9999,
+              zIndex: 99999,
             }}
           >
-            <div
-              style={{
-                background: "#1B1B22",
-                border: "1px solid rgba(255,255,255,0.18)",
-                borderRadius: 16,
-                padding: "4px 0",
-                maxHeight: 260,
-                overflowY: "auto",
-                boxShadow:
-                  "0 24px 60px -12px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.05) inset",
-              }}
-            >
+            <div style={panelStyle}>
               {options.map((o) => {
                 const selected = o.value === value;
                 return (
@@ -142,22 +143,20 @@ export default function Dropdown<T extends string>({
                     style={{
                       width: "100%",
                       textAlign: "left",
-                      padding: "10px 16px",
+                      padding: "11px 16px",
                       fontSize: 14,
-                      fontWeight: 500,
+                      fontWeight: 600,
                       color: "#ffffff",
-                      background: selected ? "rgba(255,255,255,0.08)" : "transparent",
+                      background: selected ? "rgba(255,255,255,0.10)" : "transparent",
                       border: "none",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      transition: "background 0.15s ease",
                     }}
                     onMouseEnter={(e) => {
                       if (!selected) {
-                        (e.currentTarget as HTMLElement).style.background =
-                          "rgba(255,255,255,0.05)";
+                        (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)";
                       }
                     }}
                     onMouseLeave={(e) => {
@@ -172,14 +171,15 @@ export default function Dropdown<T extends string>({
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
                         paddingRight: 8,
+                        color: "#ffffff",
                       }}
                     >
                       {o.label}
                     </span>
                     {selected && (
                       <svg
-                        width="13"
-                        height="13"
+                        width="14"
+                        height="14"
                         viewBox="0 0 12 12"
                         fill="none"
                         style={{ color: "#34D399", flexShrink: 0 }}
@@ -187,7 +187,7 @@ export default function Dropdown<T extends string>({
                         <path
                           d="M2.5 6.5L5 9L9.5 3.5"
                           stroke="currentColor"
-                          strokeWidth="1.9"
+                          strokeWidth="2"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
