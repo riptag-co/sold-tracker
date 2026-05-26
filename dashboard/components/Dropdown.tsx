@@ -74,12 +74,10 @@ export default function Dropdown<T extends string>({
           <div
             className="rounded-2xl py-1 overflow-y-auto max-h-[260px] overscroll-contain"
             style={{
-              background: "rgba(18, 18, 20, 0.92)",
-              backdropFilter: "blur(24px) saturate(160%)",
-              WebkitBackdropFilter: "blur(24px) saturate(160%)",
-              border: "1px solid rgba(255,255,255,0.10)",
+              background: "#15151A",
+              border: "1px solid rgba(255,255,255,0.14)",
               boxShadow:
-                "0 18px 48px -12px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04) inset",
+                "0 24px 56px -12px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.04) inset",
             }}
           >
             {options.map((o) => {
@@ -94,10 +92,10 @@ export default function Dropdown<T extends string>({
                     onChange(o.value);
                     setOpen(false);
                   }}
-                  className={`flex items-center justify-between w-full text-left px-4 py-2.5 text-[13.5px] font-medium transition-colors ${
+                  className={`flex items-center justify-between w-full text-left px-4 py-2.5 text-[14px] font-medium transition-colors ${
                     selected
-                      ? "text-white bg-white/[0.06]"
-                      : "text-text-2 hover:text-white hover:bg-white/[0.04]"
+                      ? "text-white bg-white/[0.08]"
+                      : "text-white/85 hover:text-white hover:bg-white/[0.05]"
                   }`}
                 >
                   <span className="truncate pr-2">{o.label}</span>

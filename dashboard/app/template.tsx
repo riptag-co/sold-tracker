@@ -1,13 +1,14 @@
 "use client";
 
-// Re-renders on every route change so each page gets a fresh slide-in
-// animation. Cheaper than framer-motion for this one effect.
+// Quick fade between routes. The per-section fade-up animations on
+// each page provide the bulk of the motion; this just smooths the
+// route swap without delaying interaction.
 import { usePathname } from "next/navigation";
 
 export default function Template({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
-    <div key={pathname} className="animate-page-in">
+    <div key={pathname} className="animate-route-fade">
       {children}
     </div>
   );

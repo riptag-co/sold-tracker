@@ -51,9 +51,19 @@ export default function Nav({
   const tabRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
   const [status, setStatus] = useState<LiveStatus>(liveStatusFromTimestamp(latestSnapshotT));
-  const activeIdx = Math.max(0, links.findIndex((l) => l.href === path));
 
-  // Re-evaluate liveness every 30s without round-tripping the server.
+  // Optimistic active tab — set the moment a tab is tapped, before the
+  // route actually changes. Cleared once the real pathname catches up.
+  const [pendingIdx, setPendingIdx] = useState<number | null>(null);
+  const realIdx = Math.max(0, links.findIndex((l) => l.href === path));
+  const displayedIdx = pendingIdx ?? realIdx;
+
+  useEffect(() => {
+    if (pendingIdx !== null && realIdx === pendingIdx) {
+      setPendingIdx(null);
+    }
+  }, [realIdx, pendingIdx]);
+
   useEffect(() => {
     setStatus(liveStatusFromTimestamp(latestSnapshotT));
     const id = setInterval(() => {
@@ -64,7 +74,7 @@ export default function Nav({
 
   useIsoLayoutEffect(() => {
     function measure() {
-      const el = tabRefs.current[activeIdx];
+      const el = tabRefs.current[displayedIdx];
       const container = containerRef.current;
       if (!el || !container) return;
       const c = container.getBoundingClientRect();
@@ -74,7 +84,7 @@ export default function Nav({
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [activeIdx]);
+  }, [displayedIdx]);
 
   return (
     <header className="px-4 pt-7 pb-4 max-w-2xl mx-auto animate-fade-in">
@@ -101,13 +111,13 @@ export default function Nav({
       >
         {indicator && (
           <span
-            className="absolute top-1 bottom-1 bg-white rounded-full shadow-[0_2px_10px_-2px_rgba(255,255,255,0.32)] transition-all duration-[260ms] ease-ios-sharp"
+            className="absolute top-1 bottom-1 bg-white rounded-full shadow-[0_2px_10px_-2px_rgba(255,255,255,0.32)] transition-all duration-[220ms] ease-ios-sharp"
             style={{ left: indicator.left, width: indicator.width }}
             aria-hidden
           />
         )}
         {links.map((l, i) => {
-          const active = i === activeIdx;
+          const active = i === displayedIdx;
           return (
             <Link
               key={l.href}
@@ -115,7 +125,8 @@ export default function Nav({
               ref={(el) => {
                 tabRefs.current[i] = el;
               }}
-              className={`relative z-10 flex-1 text-center px-2 py-2 rounded-full font-semibold transition-colors duration-200 active:scale-[0.96] ${
+              onClick={() => setPendingIdx(i)}
+              className={`relative z-10 flex-1 text-center px-2 py-2 rounded-full font-semibold transition-colors duration-150 active:scale-[0.96] ${
                 active ? "text-[#0A0A0B]" : "text-text-2 hover:text-white"
               }`}
             >

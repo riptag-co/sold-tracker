@@ -53,6 +53,7 @@ export default {
         "scale-in": "scaleIn 0.22s cubic-bezier(0.32, 0.72, 0, 1) both",
         "dropdown-in": "dropdownIn 0.18s cubic-bezier(0.32, 0.72, 0, 1) both",
         "page-in": "pageIn 0.32s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "route-fade": "routeFade 0.14s ease-out both",
         "sheet-up": "sheetUp 0.32s cubic-bezier(0.32, 0.72, 0, 1) both",
         "ring-draw": "ringDraw 1.1s cubic-bezier(0.16, 1, 0.3, 1) both",
         "bar-fill": "barFill 1s cubic-bezier(0.16, 1, 0.3, 1) both",
@@ -79,6 +80,10 @@ export default {
         dropdownIn: {
           from: { opacity: "0", transform: "translateY(-4px) scale(0.97)" },
           to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        routeFade: {
+          from: { opacity: "0.4" },
+          to: { opacity: "1" },
         },
         sheetUp: {
           from: { opacity: "0", transform: "translateY(40px)" },
