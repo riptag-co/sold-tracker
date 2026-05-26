@@ -21,7 +21,8 @@ export async function GET() {
   const [{ data: stores }, { data: snapshots }] = await Promise.all([
     supabase
       .from("stores")
-      .select("id, username, display_name, avg_price_minor, currency, color")
+      .select("id, username, display_name, avg_price_minor, currency, color, avatar_url")
+      .is("deleted_at", null)
       .order("username"),
     supabase
       .from("snapshots")

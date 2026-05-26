@@ -27,8 +27,9 @@ Deno.serve(async (req) => {
 
   const { data: stores, error: sErr } = await admin
     .from("stores")
-    .select("id, username, display_name, avg_price_minor, currency")
+    .select("id, username, display_name, avg_price_minor, currency, avatar_url")
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .order("username");
   if (sErr) return json({ error: "stores read failed" }, 500);
 

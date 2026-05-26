@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { STORE_PALETTE, colorForStore } from "@/lib/colors";
-import type { Store } from "@/lib/stats";
+import { formatMoneyMinor, type Store } from "@/lib/stats";
+import Avatar from "@/components/Avatar";
 
 export default function StoresEditor({ initial }: { initial: Store[] }) {
   const [stores, setStores] = useState(initial);
@@ -23,33 +24,69 @@ export default function StoresEditor({ initial }: { initial: Store[] }) {
 
   async function addStores() {
     setError(null);
-    const usernames = [...new Set(normalize(adding))].filter(
-      (u) => !stores.some((s) => s.username === u),
-    );
-    if (usernames.length === 0) return;
+    const candidates = [...new Set(normalize(adding))];
+    if (candidates.length === 0) return;
 
-    const { data, error } = await supabase
+    // Find any existing rows (including soft-deleted) so we don't
+    // violate the unique-username constraint and so we restore data
+    // when the same username is re-added.
+    const { data: existing, error: lookupErr } = await supabase
       .from("stores")
-      .insert(usernames.map((username) => ({ username })))
-      .select("id, username, display_name, avg_price_minor, currency, color");
-    if (error) {
-      setError(error.message);
+      .select("id, username, deleted_at")
+      .in("username", candidates);
+
+    if (lookupErr) {
+      setError(lookupErr.message);
       return;
     }
-    setStores((prev) =>
-      [...prev, ...(data ?? [])].sort((a, b) =>
-        a.username.localeCompare(b.username),
-      ),
+
+    const existingByName = new Map(
+      (existing ?? []).map((e) => [e.username, e]),
     );
+    const toReactivate = (existing ?? [])
+      .filter((e) => e.deleted_at != null)
+      .map((e) => e.id);
+    const toInsert = candidates.filter((u) => !existingByName.has(u));
+
+    if (toReactivate.length > 0) {
+      const { error: e } = await supabase
+        .from("stores")
+        .update({ deleted_at: null })
+        .in("id", toReactivate);
+      if (e) {
+        setError(e.message);
+        return;
+      }
+    }
+    if (toInsert.length > 0) {
+      const { error: e } = await supabase
+        .from("stores")
+        .insert(toInsert.map((username) => ({ username })));
+      if (e) {
+        setError(e.message);
+        return;
+      }
+    }
+
+    // Re-pull the active list so local state reflects reality.
+    const { data: fresh } = await supabase
+      .from("stores")
+      .select("id, username, display_name, avg_price_minor, currency, color, avatar_url")
+      .is("deleted_at", null)
+      .order("username");
+    if (fresh) setStores(fresh as Store[]);
     setAdding("");
     startTransition(() => router.refresh());
   }
 
-  async function removeStore(id: string) {
+  async function softRemoveStore(id: string) {
     setError(null);
     const prev = stores;
     setStores(prev.filter((s) => s.id !== id));
-    const { error } = await supabase.from("stores").delete().eq("id", id);
+    const { error } = await supabase
+      .from("stores")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
     if (error) {
       setError(error.message);
       setStores(prev);
@@ -64,8 +101,7 @@ export default function StoresEditor({ initial }: { initial: Store[] }) {
     setStores((s) => s.map((x) => (x.id === id ? { ...x, ...patch } : x)));
     const { error } = await supabase.from("stores").update(patch).eq("id", id);
     if (error) {
-      console.error("Store update failed", patch, error);
-      setError(`${error.message} — did you run migration 0004?`);
+      setError(error.message);
       setStores(prev);
       throw error;
     }
@@ -87,7 +123,7 @@ export default function StoresEditor({ initial }: { initial: Store[] }) {
             >
               <StoreRow
                 store={s}
-                onRemove={() => removeStore(s.id)}
+                onRemove={() => softRemoveStore(s.id)}
                 onUpdate={(patch) => updateField(s.id, patch)}
               />
             </div>
@@ -124,6 +160,8 @@ export default function StoresEditor({ initial }: { initial: Store[] }) {
   );
 }
 
+type Expanded = "color" | "price" | "avatar" | null;
+
 function StoreRow({
   store,
   onRemove,
@@ -133,10 +171,30 @@ function StoreRow({
   onRemove: () => void;
   onUpdate: (patch: Partial<Store>) => Promise<void>;
 }) {
-  const [price, setPrice] = useState(
-    store.avg_price_minor != null ? (store.avg_price_minor / 100).toString() : "",
-  );
+  const [expanded, setExpanded] = useState<Expanded>(null);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [price, setPrice] = useState(
+    store.avg_price_minor != null
+      ? (store.avg_price_minor / 100).toString()
+      : "",
+  );
+  const [avatarInput, setAvatarInput] = useState(store.avatar_url ?? "");
+
+  // Two-tap remove confirm.
+  const [armed, setArmed] = useState(false);
+  const armTimer = useRef<number | null>(null);
+  function handleRemove() {
+    if (armed) {
+      if (armTimer.current) window.clearTimeout(armTimer.current);
+      setArmed(false);
+      onRemove();
+      return;
+    }
+    setArmed(true);
+    if (armTimer.current) window.clearTimeout(armTimer.current);
+    armTimer.current = window.setTimeout(() => setArmed(false), 3000);
+  }
+
   const currentColor = colorForStore(store);
 
   function flashSaved() {
@@ -164,28 +222,44 @@ function StoreRow({
     } catch { /* error shown at top */ }
   }
 
-  return (
-    <div className="glass p-5 relative overflow-hidden">
-      {/* Subtle accent stripe on the left edge using the store color */}
-      <span
-        aria-hidden
-        className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full"
-        style={{ background: currentColor }}
-      />
+  async function commitAvatar() {
+    const next = avatarInput.trim() || null;
+    if (next === (store.avatar_url ?? null)) return;
+    try {
+      await onUpdate({ avatar_url: next });
+      flashSaved();
+    } catch { /* error shown at top */ }
+  }
 
-      <div className="flex items-start justify-between gap-3 mb-4 pl-2">
-        <div className="min-w-0">
-          <div className="font-semibold truncate text-[16px] tracking-tight">
-            {store.username}
+  const priceDisplay =
+    store.avg_price_minor != null
+      ? formatMoneyMinor(store.avg_price_minor, store.currency)
+      : "Set";
+
+  return (
+    <div className="glass p-4">
+      {/* Header: avatar + username + remove */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar
+            url={store.avatar_url}
+            username={store.username}
+            color={currentColor}
+            size={40}
+          />
+          <div className="min-w-0">
+            <div className="font-semibold truncate text-[16px] tracking-tight">
+              {store.username}
+            </div>
+            <a
+              href={`https://www.depop.com/${encodeURIComponent(store.username)}/`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[12px] text-text-3 hover:text-white transition-colors"
+            >
+              depop.com/{store.username}
+            </a>
           </div>
-          <a
-            href={`https://www.depop.com/${encodeURIComponent(store.username)}/`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-[12px] text-text-3 hover:text-white transition-colors"
-          >
-            depop.com/{store.username}
-          </a>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <span
@@ -195,16 +269,59 @@ function StoreRow({
           >
             Saved
           </span>
-          <button className="ghost" onClick={onRemove}>Remove</button>
+          <button
+            onClick={handleRemove}
+            className="rounded-full text-[11.5px] font-semibold transition-all active:scale-95"
+            style={{
+              padding: "6px 12px",
+              background: armed ? "rgba(248,113,113,0.18)" : "rgba(255,255,255,0.05)",
+              border: armed
+                ? "1px solid rgba(248,113,113,0.55)"
+                : "1px solid rgba(255,255,255,0.16)",
+              color: armed ? "#FCA5A5" : "rgba(255,255,255,0.75)",
+            }}
+          >
+            {armed ? "Confirm" : "Remove"}
+          </button>
         </div>
       </div>
 
-      <div className="pl-2 space-y-4">
-        {/* Color picker */}
-        <div>
-          <div className="text-[11px] text-text-3 font-medium mb-2">
-            Color
-          </div>
+      {/* Compact edit buttons */}
+      <div className="flex gap-2 flex-wrap">
+        <CompactButton
+          active={expanded === "color"}
+          onClick={() => setExpanded(expanded === "color" ? null : "color")}
+          leading={
+            <span
+              className="w-3 h-3 rounded-full"
+              style={{ background: currentColor }}
+            />
+          }
+          label="Color"
+        />
+        <CompactButton
+          active={expanded === "price"}
+          onClick={() => setExpanded(expanded === "price" ? null : "price")}
+          label={priceDisplay ?? "Set"}
+          mono
+        />
+        <CompactButton
+          active={expanded === "avatar"}
+          onClick={() => setExpanded(expanded === "avatar" ? null : "avatar")}
+          leading={
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 21a8 8 0 0 1 16 0" />
+            </svg>
+          }
+          label="Avatar"
+        />
+      </div>
+
+      {/* Expanded editors */}
+      {expanded === "color" && (
+        <div className="mt-4 animate-fade-up">
+          <div className="text-[11px] text-text-3 font-medium mb-2">Color</div>
           <div className="flex flex-wrap gap-2">
             <SwatchAuto
               selected={store.color == null}
@@ -221,12 +338,13 @@ function StoreRow({
             ))}
           </div>
         </div>
+      )}
 
-        {/* Avg price */}
-        <label className="block">
-          <span className="text-[11px] text-text-3 font-medium block mb-2">
+      {expanded === "price" && (
+        <div className="mt-4 animate-fade-up">
+          <div className="text-[11px] text-text-3 font-medium mb-2">
             Avg price ({store.currency})
-          </span>
+          </div>
           <input
             className="field text-[14px] num-tight"
             type="number"
@@ -236,10 +354,63 @@ function StoreRow({
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             onBlur={commitPrice}
+            autoFocus
           />
-        </label>
-      </div>
+        </div>
+      )}
+
+      {expanded === "avatar" && (
+        <div className="mt-4 animate-fade-up">
+          <div className="text-[11px] text-text-3 font-medium mb-2">
+            Avatar URL <span className="text-text-3 normal-case">(paste a Depop CDN image URL)</span>
+          </div>
+          <input
+            className="field text-[13px] font-mono"
+            type="url"
+            placeholder="https://..."
+            value={avatarInput}
+            onChange={(e) => setAvatarInput(e.target.value)}
+            onBlur={commitAvatar}
+            autoFocus
+          />
+        </div>
+      )}
     </div>
+  );
+}
+
+function CompactButton({
+  active,
+  onClick,
+  leading,
+  label,
+  mono = false,
+}: {
+  active: boolean;
+  onClick: () => void;
+  leading?: React.ReactNode;
+  label: string;
+  mono?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-2 rounded-full transition-all active:scale-95"
+      style={{
+        padding: "6px 12px",
+        background: active ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.14)",
+        color: "#fff",
+        fontSize: 12.5,
+        fontWeight: 600,
+        fontFamily: mono
+          ? '"SF Mono", ui-monospace, Menlo, monospace'
+          : undefined,
+      }}
+    >
+      {leading && <span className="inline-flex">{leading}</span>}
+      <span>{label}</span>
+    </button>
   );
 }
 

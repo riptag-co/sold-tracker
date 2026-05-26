@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import AnimatedNumber from "@/components/AnimatedNumber";
 import StoreSheet from "@/components/StoreSheet";
 import Flame from "@/components/Flame";
+import Avatar from "@/components/Avatar";
 import PeriodPicker, { type Period } from "@/components/PeriodPicker";
 import RefreshButton from "@/components/RefreshButton";
 import {
@@ -297,6 +298,12 @@ function StoreRow({
       />
       <div className="min-w-0 flex items-center gap-3">
         <FreshnessDot lastSeen={stats.lastSeen} hasError={hasError} tint={tint} />
+        <Avatar
+          url={store.avatar_url}
+          username={store.username}
+          color={tint}
+          size={32}
+        />
         <div className="min-w-0">
           <div
             className="text-[16px] font-medium truncate tracking-tight flex items-center gap-1.5"

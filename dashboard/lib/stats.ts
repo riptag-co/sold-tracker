@@ -14,6 +14,7 @@ export type Store = {
   avg_price_minor: number | null;
   currency: string;
   color: string | null;
+  avatar_url: string | null;
 };
 
 export type StoreError = {
