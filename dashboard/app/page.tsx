@@ -20,7 +20,9 @@ export default async function Home() {
       supabase
         .from("snapshots")
         .select("store_id, sold_count, taken_at")
-        .gte("taken_at", new Date(Date.now() - 95 * 86_400_000).toISOString())
+        // Overview only needs current-month math + 14-day pace lookback.
+        // Drop 95 → 35 days to slice query latency.
+        .gte("taken_at", new Date(Date.now() - 35 * 86_400_000).toISOString())
         .order("taken_at", { ascending: true }),
       supabase.from("fetch_errors").select("store_id, message, occurred_at"),
     ]);
