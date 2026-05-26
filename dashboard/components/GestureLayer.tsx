@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-const TABS = ["/", "/stats", "/stores", "/goals", "/settings"];
+const TABS = ["/", "/goals", "/stats", "/stores"];
 
 const PULL_TRIGGER = 80;   // px pulled before refresh fires
 const PULL_MAX = 140;      // visual cap

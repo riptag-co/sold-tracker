@@ -34,7 +34,7 @@ export default async function Home() {
   return (
     <>
       <LiveRefresh />
-      <main className="px-4 pb-20 max-w-2xl mx-auto">
+      <main className="px-5 sm:px-4 pb-20 max-w-2xl mx-auto">
         {storeList.length === 0 ? (
           <Empty />
         ) : (

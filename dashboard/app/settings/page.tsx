@@ -16,7 +16,7 @@ export default async function SettingsPage() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
   return (
-    <main className="px-4 pb-20 max-w-2xl mx-auto space-y-3">
+    <main className="px-5 sm:px-4 pb-20 max-w-2xl mx-auto space-y-3">
       <h1 className="text-2xl font-bold mt-1 sm:mt-4 mb-1 tracking-tight">Settings</h1>
 
       <section className="glass p-6 animate-fade-up">

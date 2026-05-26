@@ -2,7 +2,7 @@ import { SkeletonBox } from "@/components/Skeleton";
 
 export default function Loading() {
   return (
-    <main className="px-4 pb-20 max-w-2xl mx-auto">
+    <main className="px-5 sm:px-4 pb-20 max-w-2xl mx-auto">
       <SkeletonBox className="mt-5" height={32} />
       <SkeletonBox className="mt-3" height={20} />
       <div className="glass mt-6 p-6 animate-fade-up">

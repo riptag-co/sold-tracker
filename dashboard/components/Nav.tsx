@@ -5,11 +5,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const links = [
-  { href: "/", label: "Overview" },
+  { href: "/", label: "Main" },
+  { href: "/goals", label: "Goals" },
   { href: "/stats", label: "Stats" },
   { href: "/stores", label: "Stores" },
-  { href: "/goals", label: "Goals" },
-  { href: "/settings", label: "Settings" },
 ];
 
 const useIsoLayoutEffect =
@@ -54,8 +53,10 @@ export default function Nav({
 
   // Optimistic active tab — set the moment a tab is tapped, before the
   // route actually changes. Cleared once the real pathname catches up.
+  // null means "no tab matches the current route" (e.g. /settings).
   const [pendingIdx, setPendingIdx] = useState<number | null>(null);
-  const realIdx = Math.max(0, links.findIndex((l) => l.href === path));
+  const matchedIdx = links.findIndex((l) => l.href === path);
+  const realIdx = matchedIdx >= 0 ? matchedIdx : null;
   const displayedIdx = pendingIdx ?? realIdx;
 
   useEffect(() => {
@@ -74,6 +75,10 @@ export default function Nav({
 
   useIsoLayoutEffect(() => {
     function measure() {
+      if (displayedIdx == null) {
+        setIndicator(null);
+        return;
+      }
       const el = tabRefs.current[displayedIdx];
       const container = containerRef.current;
       if (!el || !container) return;
@@ -87,7 +92,7 @@ export default function Nav({
   }, [displayedIdx]);
 
   return (
-    <header className="px-4 pt-4 sm:pt-7 pb-2 max-w-2xl mx-auto animate-fade-in">
+    <header className="px-5 sm:px-4 pt-4 sm:pt-7 pb-2 max-w-2xl mx-auto animate-fade-in">
       <div className="flex justify-center mb-3 sm:mb-5">
         <Link href="/" className="group inline-flex items-center gap-2.5 select-none">
           <span className="font-rounded text-[13px] font-bold tracking-[0.32em] text-white/95">

@@ -23,7 +23,7 @@ export default async function GoalsPage() {
     ]);
 
   return (
-    <main className="px-4 pb-20 max-w-2xl mx-auto">
+    <main className="px-5 sm:px-4 pb-20 max-w-2xl mx-auto">
       <GoalsView
         stores={stores ?? []}
         snapshots={snapshots ?? []}
