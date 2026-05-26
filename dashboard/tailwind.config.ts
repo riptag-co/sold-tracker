@@ -48,11 +48,12 @@ export default {
         "money-soft": "rgba(52, 211, 153, 0.85)",
       },
       animation: {
-        "fade-up": "fadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both",
-        "fade-in": "fadeIn 0.4s ease-out both",
-        "scale-in": "scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both",
-        "page-in": "pageIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both",
-        "sheet-up": "sheetUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "fade-up": "fadeUp 0.42s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "fade-in": "fadeIn 0.3s ease-out both",
+        "scale-in": "scaleIn 0.22s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "dropdown-in": "dropdownIn 0.18s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "page-in": "pageIn 0.32s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "sheet-up": "sheetUp 0.32s cubic-bezier(0.32, 0.72, 0, 1) both",
         "ring-draw": "ringDraw 1.1s cubic-bezier(0.16, 1, 0.3, 1) both",
         "bar-fill": "barFill 1s cubic-bezier(0.16, 1, 0.3, 1) both",
         "live-pulse": "livePulse 2.2s ease-out infinite",
@@ -72,8 +73,12 @@ export default {
           to: { opacity: "1", transform: "scale(1)" },
         },
         pageIn: {
-          from: { opacity: "0", transform: "translateX(24px) scale(0.99)" },
-          to: { opacity: "1", transform: "translateX(0) scale(1)" },
+          from: { opacity: "0", transform: "translateX(14px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
+        dropdownIn: {
+          from: { opacity: "0", transform: "translateY(-4px) scale(0.97)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
         },
         sheetUp: {
           from: { opacity: "0", transform: "translateY(40px)" },
@@ -98,6 +103,7 @@ export default {
       },
       transitionTimingFunction: {
         "ios-spring": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "ios-sharp": "cubic-bezier(0.32, 0.72, 0, 1)",
       },
     },
   },

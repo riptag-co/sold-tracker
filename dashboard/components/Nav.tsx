@@ -101,7 +101,7 @@ export default function Nav({
       >
         {indicator && (
           <span
-            className="absolute top-1 bottom-1 bg-white rounded-full shadow-[0_2px_10px_-2px_rgba(255,255,255,0.32)] transition-all duration-[450ms] ease-ios-spring"
+            className="absolute top-1 bottom-1 bg-white rounded-full shadow-[0_2px_10px_-2px_rgba(255,255,255,0.32)] transition-all duration-[260ms] ease-ios-sharp"
             style={{ left: indicator.left, width: indicator.width }}
             aria-hidden
           />
@@ -115,7 +115,7 @@ export default function Nav({
               ref={(el) => {
                 tabRefs.current[i] = el;
               }}
-              className={`relative z-10 flex-1 text-center px-2 py-2 rounded-full font-semibold transition-colors duration-300 active:scale-[0.96] ${
+              className={`relative z-10 flex-1 text-center px-2 py-2 rounded-full font-semibold transition-colors duration-200 active:scale-[0.96] ${
                 active ? "text-[#0A0A0B]" : "text-text-2 hover:text-white"
               }`}
             >
