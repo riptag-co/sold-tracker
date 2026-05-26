@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default async function GoalsPage() {
   const supabase = await createClient();
 
-  const [{ data: stores }, { data: snapshots }, { data: goals }] =
+  const [{ data: stores }, { data: snapshots }, { data: goals }, { data: control }] =
     await Promise.all([
       supabase
         .from("stores")
@@ -20,6 +20,7 @@ export default async function GoalsPage() {
         .from("goals")
         .select("id, store_id, period, metric, target, label, created_at")
         .order("created_at", { ascending: false }),
+      supabase.from("control").select("main_goal_id").eq("id", 1).maybeSingle(),
     ]);
 
   return (
@@ -28,6 +29,7 @@ export default async function GoalsPage() {
         stores={stores ?? []}
         snapshots={snapshots ?? []}
         goals={goals ?? []}
+        mainGoalId={control?.main_goal_id ?? null}
       />
     </main>
   );

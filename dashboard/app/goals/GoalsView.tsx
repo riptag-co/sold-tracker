@@ -32,10 +32,12 @@ export default function GoalsView({
   stores,
   snapshots,
   goals,
+  mainGoalId,
 }: {
   stores: Store[];
   snapshots: Snapshot[];
   goals: Goal[];
+  mainGoalId: string | null;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -108,6 +110,15 @@ export default function GoalsView({
     if (!error) router.refresh();
   }
 
+  async function toggleMain(id: string) {
+    const next = mainGoalId === id ? null : id;
+    const { error } = await supabase
+      .from("control")
+      .update({ main_goal_id: next })
+      .eq("id", 1);
+    if (!error) router.refresh();
+  }
+
   const computed = useMemo(() => {
     return goals.map((g) => {
       const value = computeGoalProgress(g, stores, snapsByStore);
@@ -124,6 +135,13 @@ export default function GoalsView({
       {/* Featured ring */}
       {primary ? (
         <section className="glass p-7 sm:p-10 mb-3 text-center animate-fade-up relative">
+          {/* Star — top-left, sets this as the Main goal */}
+          <StarButton
+            isMain={mainGoalId === primary.goal.id}
+            onClick={() => toggleMain(primary.goal.id)}
+            className="absolute top-3 left-3"
+          />
+          {/* Delete — top-right with 2-tap confirm */}
           {(() => {
             const id = primary.goal.id;
             const armed = armedId === id;
@@ -182,7 +200,9 @@ export default function GoalsView({
                 value={value}
                 stores={stores}
                 armed={armedId === goal.id}
+                isMain={mainGoalId === goal.id}
                 onRemove={() => arm(goal.id, () => removeGoal(goal.id))}
+                onToggleMain={() => toggleMain(goal.id)}
               />
             ))}
           </div>
@@ -329,13 +349,17 @@ function LinearGoalRow({
   value,
   stores,
   armed,
+  isMain,
   onRemove,
+  onToggleMain,
 }: {
   goal: Goal;
   value: number;
   stores: Store[];
   armed: boolean;
+  isMain: boolean;
   onRemove: () => void;
+  onToggleMain: () => void;
 }) {
   const percent = goal.target > 0 ? value / goal.target : 0;
   const store = stores.find((s) => s.id === goal.store_id) ?? null;
@@ -346,7 +370,9 @@ function LinearGoalRow({
   return (
     <div>
       <div className="flex justify-between items-baseline mb-2 gap-2">
-        <div className="min-w-0">
+        <div className="min-w-0 flex items-start gap-2">
+          <StarButton isMain={isMain} onClick={onToggleMain} small />
+          <div className="min-w-0">
           <div className="text-[13.5px] font-semibold truncate flex items-center gap-2">
             {goalSubtitle(goal, stores)}
             {reached && (
@@ -366,6 +392,7 @@ function LinearGoalRow({
               {Math.round(percent * 100)}%
             </span>
           </div>
+          </div>
         </div>
         <button
           onClick={onRemove}
@@ -378,6 +405,56 @@ function LinearGoalRow({
       </div>
       <LinearProgress percent={percent} color={tint} />
     </div>
+  );
+}
+
+function StarButton({
+  isMain,
+  onClick,
+  small = false,
+  className = "",
+}: {
+  isMain: boolean;
+  onClick: () => void;
+  small?: boolean;
+  className?: string;
+}) {
+  const size = small ? 22 : 36;
+  const iconSize = small ? 13 : 17;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={isMain ? "Unstar main goal" : "Mark as main goal"}
+      title={isMain ? "Main goal" : "Set as main goal"}
+      className={`inline-flex items-center justify-center rounded-full transition-all active:scale-90 flex-shrink-0 ${className}`}
+      style={{
+        width: size,
+        height: size,
+        background: isMain ? "rgba(255,213,76,0.16)" : "rgba(255,255,255,0.05)",
+        border: isMain
+          ? "1px solid rgba(255,213,76,0.55)"
+          : "1px solid rgba(255,255,255,0.12)",
+        color: isMain ? "#FFD54C" : "rgba(255,255,255,0.55)",
+      }}
+    >
+      <svg
+        width={iconSize}
+        height={iconSize}
+        viewBox="0 0 24 24"
+        fill={isMain ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+        style={
+          isMain
+            ? { filter: "drop-shadow(0 0 4px rgba(255,213,76,0.5))" }
+            : undefined
+        }
+      >
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      </svg>
+    </button>
   );
 }
 

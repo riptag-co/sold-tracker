@@ -7,12 +7,21 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
   const supabase = await createClient();
 
-  const { data: tokens } = await supabase
-    .from("device_tokens")
-    .select("id, label, created_at, last_used_at, revoked_at")
-    .is("revoked_at", null)
-    .order("created_at", { ascending: false });
+  const [{ data: tokens }, { data: errors }, { data: stores }] =
+    await Promise.all([
+      supabase
+        .from("device_tokens")
+        .select("id, label, created_at, last_used_at, revoked_at")
+        .is("revoked_at", null)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("fetch_errors")
+        .select("store_id, message, occurred_at")
+        .order("occurred_at", { ascending: false }),
+      supabase.from("stores").select("id, username"),
+    ]);
 
+  const storesById = new Map((stores ?? []).map((s) => [s.id, s.username as string]));
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
   return (
@@ -42,6 +51,42 @@ export default async function SettingsPage() {
           Paired devices
         </h2>
         <DevicesPanel initial={tokens ?? []} />
+      </section>
+
+      {/* Issues — live errors from the extension's last poll */}
+      <section
+        className="glass p-6 animate-fade-up"
+        style={{ animationDelay: "120ms" }}
+      >
+        <h2 className="text-[16px] font-semibold mb-1 tracking-tight">Issues</h2>
+        {(errors ?? []).length === 0 ? (
+          <p className="text-[13px] text-text-3">
+            All stores are responding normally.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {(errors ?? []).map((e) => (
+              <li
+                key={e.store_id}
+                className="flex items-start gap-2 text-[13px] leading-relaxed"
+              >
+                <span
+                  className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
+                  style={{
+                    background: "#F87171",
+                    boxShadow: "0 0 8px rgba(248,113,113,0.7)",
+                  }}
+                />
+                <div className="min-w-0">
+                  <div className="font-semibold" style={{ color: "#F87171" }}>
+                    @{storesById.get(e.store_id) ?? "?"}
+                  </div>
+                  <div className="text-text-2 mt-0.5">{e.message}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </main>
   );
