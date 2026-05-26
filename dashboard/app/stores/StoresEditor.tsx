@@ -178,7 +178,8 @@ function StoreRow({
       ? (store.avg_price_minor / 100).toString()
       : "",
   );
-  const [avatarInput, setAvatarInput] = useState(store.avatar_url ?? "");
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   // Two-tap remove confirm.
   const [armed, setArmed] = useState(false);
@@ -222,13 +223,34 @@ function StoreRow({
     } catch { /* error shown at top */ }
   }
 
-  async function commitAvatar() {
-    const next = avatarInput.trim() || null;
-    if (next === (store.avatar_url ?? null)) return;
+  async function uploadAvatar(file: File) {
+    setAvatarError(null);
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("Pick a JPEG or PNG image.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setAvatarError("Image is too large (8 MB max).");
+      return;
+    }
+    setAvatarBusy(true);
     try {
-      await onUpdate({ avatar_url: next });
+      const dataUrl = await resizeImageToDataUrl(file, 192, 0.8);
+      await onUpdate({ avatar_url: dataUrl });
       flashSaved();
-    } catch { /* error shown at top */ }
+    } catch (e) {
+      setAvatarError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
+  async function removeAvatar() {
+    setAvatarError(null);
+    try {
+      await onUpdate({ avatar_url: null });
+      flashSaved();
+    } catch { /* shown at top */ }
   }
 
   const priceDisplay =
@@ -362,17 +384,65 @@ function StoreRow({
       {expanded === "avatar" && (
         <div className="mt-4 animate-fade-up">
           <div className="text-[11px] text-text-3 font-medium mb-2">
-            Avatar URL <span className="text-text-3 normal-case">(paste a Depop CDN image URL)</span>
+            Avatar image
           </div>
-          <input
-            className="field text-[13px] font-mono"
-            type="url"
-            placeholder="https://..."
-            value={avatarInput}
-            onChange={(e) => setAvatarInput(e.target.value)}
-            onBlur={commitAvatar}
-            autoFocus
-          />
+          <div className="flex items-center gap-2 flex-wrap">
+            <label
+              className="inline-flex items-center gap-2 rounded-full cursor-pointer transition-all active:scale-95"
+              style={{
+                padding: "8px 14px",
+                background: avatarBusy
+                  ? "rgba(255,255,255,0.08)"
+                  : "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.18)",
+                color: "#fff",
+                fontSize: 12.5,
+                fontWeight: 600,
+              }}
+            >
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                disabled={avatarBusy}
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (f) await uploadAvatar(f);
+                  e.target.value = "";
+                }}
+              />
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              {avatarBusy ? "Uploading…" : store.avatar_url ? "Replace image" : "Upload image"}
+            </label>
+            {store.avatar_url && (
+              <button
+                type="button"
+                onClick={removeAvatar}
+                className="text-[12px] text-text-3 hover:text-red-300 transition-colors px-2 py-1"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          {avatarError && (
+            <div className="text-[12px] text-red-300/90 mt-2">{avatarError}</div>
+          )}
+          <div className="text-[11px] text-text-3 mt-2 leading-relaxed">
+            JPEG, PNG, or WebP. Resized to 192×192 and saved with this shop.
+          </div>
         </div>
       )}
     </div>
@@ -439,6 +509,39 @@ function Swatch({
       }}
     />
   );
+}
+
+// Load an image file, fit it into a maxSize×maxSize box (preserving
+// aspect ratio), and return a JPEG data URL. ~10-15 KB at 192/q0.8 —
+// fine to stash in the avatar_url text column directly.
+async function resizeImageToDataUrl(
+  file: File,
+  maxSize: number,
+  quality: number,
+): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(new Error("could not read file"));
+    r.readAsDataURL(file);
+  });
+  return new Promise<string>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(maxSize / img.width, maxSize / img.height, 1);
+      const w = Math.max(1, Math.round(img.width * ratio));
+      const h = Math.max(1, Math.round(img.height * ratio));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("canvas unavailable"));
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => reject(new Error("could not decode image"));
+    img.src = dataUrl;
+  });
 }
 
 function SwatchAuto({
