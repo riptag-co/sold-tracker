@@ -1,12 +1,14 @@
-<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="115" ry="115" fill="#34D399"/>
-  <text
-    x="256"
-    y="384"
-    text-anchor="middle"
-    font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif"
-    font-size="380"
-    font-weight="900"
-    fill="#ffffff"
-  >$</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 24 24">
+  <defs>
+    <linearGradient id="g" x1="12" y1="0" x2="12" y2="24" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3DDC97"/>
+      <stop offset="55%" stop-color="#1FB57E"/>
+      <stop offset="100%" stop-color="#0E8C5C"/>
+    </linearGradient>
+  </defs>
+  <rect width="24" height="24" rx="5.4" fill="url(#g)"/>
+  <g stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="12" y1="3" x2="12" y2="21"/>
+    <path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+  </g>
 </svg>
