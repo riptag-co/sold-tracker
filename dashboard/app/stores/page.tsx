@@ -14,11 +14,11 @@ export default async function StoresPage() {
   return (
     <>
       <Nav />
-      <main className="px-4 pb-10 max-w-3xl mx-auto">
-        <h1 className="text-xl font-semibold mb-1">Stores</h1>
-        <p className="text-sm text-text-2 mb-5">
-          Add the Depop usernames you want to track. The optional
-          average price is used to estimate revenue (count × avg).
+      <main className="px-4 pb-20 max-w-2xl mx-auto">
+        <h1 className="text-2xl font-bold mt-4 mb-1 tracking-tight">Stores</h1>
+        <p className="text-[14px] text-text-2 mb-6 leading-relaxed">
+          Add the Depop usernames you want to track. Average price drives the
+          revenue estimate (sales × avg).
         </p>
         <StoresEditor initial={stores ?? []} />
       </main>

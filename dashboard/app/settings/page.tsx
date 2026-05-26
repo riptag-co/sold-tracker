@@ -19,28 +19,31 @@ export default async function SettingsPage() {
   return (
     <>
       <Nav />
-      <main className="px-4 pb-10 max-w-3xl mx-auto space-y-4">
-        <h1 className="text-xl font-semibold mb-1">Settings</h1>
+      <main className="px-4 pb-20 max-w-2xl mx-auto space-y-3">
+        <h1 className="text-2xl font-bold mt-4 mb-1 tracking-tight">Settings</h1>
 
-        <section className="glass p-5">
-          <h2 className="text-sm font-semibold mb-1">Pair extension</h2>
-          <p className="text-sm text-text-2 mb-4">
-            Open the extension&apos;s settings page in Chrome, paste the
-            URL and code below.
+        <section className="glass p-6 animate-fade-up">
+          <h2 className="text-[16px] font-semibold mb-1 tracking-tight">
+            Pair extension
+          </h2>
+          <p className="text-[13px] text-text-2 mb-5 leading-relaxed">
+            Open the Sold Tracker extension in Chrome, paste the URL and code below.
           </p>
-          <div className="mb-4">
-            <div className="text-[10px] uppercase tracking-[0.16em] text-text-3 font-semibold mb-1">
+          <div className="mb-5">
+            <div className="text-[11px] text-text-3 font-medium mb-1.5">
               Dashboard URL
             </div>
-            <code className="block bg-white/[0.04] border border-line rounded-lg px-3 py-2 text-sm font-mono break-all">
+            <code className="block bg-white/[0.04] border border-line rounded-xl px-4 py-3 text-[13px] font-mono break-all">
               {supabaseUrl}
             </code>
           </div>
           <PairPanel />
         </section>
 
-        <section className="glass p-5">
-          <h2 className="text-sm font-semibold mb-3">Paired devices</h2>
+        <section className="glass p-6 animate-fade-up" style={{ animationDelay: "60ms" }}>
+          <h2 className="text-[16px] font-semibold mb-3 tracking-tight">
+            Paired devices
+          </h2>
           <DevicesPanel initial={tokens ?? []} />
         </section>
       </main>

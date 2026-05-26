@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/", label: "Overview" },
+  { href: "/stats", label: "Stats" },
   { href: "/stores", label: "Stores" },
   { href: "/settings", label: "Settings" },
 ];
@@ -12,21 +13,27 @@ const links = [
 export default function Nav() {
   const path = usePathname();
   return (
-    <header className="px-4 pt-5 pb-3 max-w-3xl mx-auto">
-      <Link href="/" className="text-[10px] font-semibold tracking-[0.3em] uppercase text-text-2">
-        SOLD<span className="inline-block w-1 h-1 rounded-full bg-white mx-2 align-middle" />TRACKER
-      </Link>
-      <nav className="mt-4 flex gap-1 text-[11px] uppercase tracking-[0.16em]">
+    <header className="px-4 pt-6 pb-2 max-w-2xl mx-auto animate-fade-in">
+      <div className="flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2.5">
+          <span className="text-[15px] font-semibold tracking-tight">
+            Sold Tracker
+          </span>
+          <span className="live-dot" aria-hidden />
+        </Link>
+      </div>
+
+      <nav className="mt-5 flex gap-1 p-1 rounded-full bg-white/[0.04] border border-line text-[13px] backdrop-blur-md">
         {links.map((l) => {
           const active = path === l.href;
           return (
             <Link
               key={l.href}
               href={l.href}
-              className={`px-3 py-2 rounded-full transition-colors ${
+              className={`flex-1 text-center px-3 py-2 rounded-full font-medium transition-all duration-200 ease-ios-spring ${
                 active
-                  ? "bg-white text-black font-semibold"
-                  : "text-text-2 border border-line-strong hover:text-white"
+                  ? "bg-white text-[#0A0A0B] shadow-[0_2px_8px_-2px_rgba(255,255,255,0.25)]"
+                  : "text-text-2 hover:text-white"
               }`}
             >
               {l.label}

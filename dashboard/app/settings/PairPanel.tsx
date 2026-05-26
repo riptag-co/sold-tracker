@@ -32,14 +32,14 @@ export default function PairPanel() {
   return (
     <div>
       {code ? (
-        <div className="text-center py-2">
-          <div className="text-[10px] uppercase tracking-[0.16em] text-text-3 mb-2">
-            Pairing code — expires in {ttl}m
+        <div className="text-center animate-scale-in">
+          <div className="text-[11px] text-text-3 mb-3 font-medium">
+            Expires in {ttl}m
           </div>
-          <div className="text-4xl font-mono tracking-[0.3em] font-semibold py-2">
+          <div className="num text-[44px] sm:text-[52px] tracking-[0.18em] font-bold py-2 select-all">
             {code}
           </div>
-          <button className="ghost mt-3" onClick={generate} disabled={loading}>
+          <button className="ghost mt-4" onClick={generate} disabled={loading}>
             Generate new code
           </button>
         </div>
@@ -48,7 +48,7 @@ export default function PairPanel() {
           {loading ? "Generating…" : "Generate pairing code"}
         </button>
       )}
-      {error && <div className="text-sm text-red-300 mt-3">{error}</div>}
+      {error && <div className="text-[13px] text-red-300/90 mt-3">{error}</div>}
     </div>
   );
 }
