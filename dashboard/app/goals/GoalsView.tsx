@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AnimatedNumber from "@/components/AnimatedNumber";
@@ -42,6 +42,14 @@ export default function GoalsView({
   const router = useRouter();
   const supabase = createClient();
   const snapsByStore = useMemo(() => groupSnapshots(snapshots), [snapshots]);
+
+  // Local mirror of the main-goal id so we can optimistically flip the
+  // star the moment the user taps it. Synced from the server prop.
+  const [currentMainId, setCurrentMainId] = useState(mainGoalId);
+  useEffect(() => {
+    setCurrentMainId(mainGoalId);
+  }, [mainGoalId]);
+  const [mainError, setMainError] = useState<string | null>(null);
 
   // Two-tap delete: first tap arms, second tap within 3s commits.
   const [armedId, setArmedId] = useState<string | null>(null);
@@ -111,12 +119,24 @@ export default function GoalsView({
   }
 
   async function toggleMain(id: string) {
-    const next = mainGoalId === id ? null : id;
+    setMainError(null);
+    const prev = currentMainId;
+    const next = currentMainId === id ? null : id;
+    setCurrentMainId(next);
     const { error } = await supabase
       .from("control")
       .update({ main_goal_id: next })
       .eq("id", 1);
-    if (!error) router.refresh();
+    if (error) {
+      console.error("Set main goal failed:", error);
+      setCurrentMainId(prev);
+      const msg = /column .* does not exist|main_goal_id/i.test(error.message)
+        ? "Run migration 0006 in Supabase SQL editor to add main_goal_id."
+        : error.message;
+      setMainError(msg);
+      return;
+    }
+    router.refresh();
   }
 
   const computed = useMemo(() => {
@@ -132,12 +152,26 @@ export default function GoalsView({
     <>
       <h1 className="text-[26px] font-bold mt-1 sm:mt-3 mb-3 tracking-tight">Goals</h1>
 
+      {mainError && (
+        <div
+          className="mb-3 px-4 py-3 rounded-2xl text-[12.5px] leading-relaxed animate-fade-up"
+          style={{
+            background: "rgba(248,113,113,0.10)",
+            border: "1px solid rgba(248,113,113,0.35)",
+            color: "#FCA5A5",
+          }}
+        >
+          <div className="font-semibold mb-0.5">Couldn&apos;t save main goal</div>
+          {mainError}
+        </div>
+      )}
+
       {/* Featured ring */}
       {primary ? (
         <section className="glass p-7 sm:p-10 mb-3 text-center animate-fade-up relative">
           {/* Star — top-left, sets this as the Main goal */}
           <StarButton
-            isMain={mainGoalId === primary.goal.id}
+            isMain={currentMainId === primary.goal.id}
             onClick={() => toggleMain(primary.goal.id)}
             className="absolute top-3 left-3"
           />
@@ -200,7 +234,7 @@ export default function GoalsView({
                 value={value}
                 stores={stores}
                 armed={armedId === goal.id}
-                isMain={mainGoalId === goal.id}
+                isMain={currentMainId === goal.id}
                 onRemove={() => arm(goal.id, () => removeGoal(goal.id))}
                 onToggleMain={() => toggleMain(goal.id)}
               />
