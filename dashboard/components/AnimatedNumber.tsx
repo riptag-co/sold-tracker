@@ -1,19 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { formatMoneyMinor } from "@/lib/stats";
 
 // Eases a number toward its target over ~700ms with an iOS-style
 // cubic-out curve. On first mount we snap to the value (no jarring
 // count-up from 0 on page load). On subsequent changes we animate.
+//
+// Format mode is a string instead of a callback so Server Components
+// can pass it across the RSC boundary — functions can't cross.
 export default function AnimatedNumber({
   value,
-  format,
   className,
+  format = "count",
+  currency = "USD",
   prefix = "",
 }: {
   value: number;
-  format?: (n: number) => string;
   className?: string;
+  format?: "count" | "money";
+  currency?: string;
   prefix?: string;
 }) {
   const [display, setDisplay] = useState(value);
@@ -36,8 +42,7 @@ export default function AnimatedNumber({
 
     function tick(now: number) {
       const t = Math.min(1, (now - start) / dur);
-      // easeOutCubic
-      const eased = 1 - Math.pow(1 - t, 3);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
       const next = from + (to - from) * eased;
       setDisplay(next);
       if (t < 1) {
@@ -54,9 +59,16 @@ export default function AnimatedNumber({
     };
   }, [value]);
 
-  const rendered = format
-    ? format(display)
-    : Math.round(display).toLocaleString("en-US");
+  const rounded = Math.round(display);
+  const rendered =
+    format === "money"
+      ? formatMoneyMinor(rounded, currency) ?? "$0"
+      : rounded.toLocaleString("en-US");
 
-  return <span className={className}>{prefix}{rendered}</span>;
+  return (
+    <span className={className}>
+      {prefix}
+      {rendered}
+    </span>
+  );
 }

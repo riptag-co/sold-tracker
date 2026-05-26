@@ -43,12 +43,15 @@ export default {
         "text-3": "rgba(255,255,255,0.38)",
         line: "rgba(255,255,255,0.06)",
         "line-strong": "rgba(255,255,255,0.12)",
+        // "Money green" — vibrant emerald, reads as cash on dark BG.
+        money: "#34D399",
+        "money-soft": "rgba(52, 211, 153, 0.85)",
       },
       animation: {
         "fade-up": "fadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both",
         "fade-in": "fadeIn 0.4s ease-out both",
         "scale-in": "scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both",
-        "page-in": "pageIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "page-in": "pageIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both",
         "live-pulse": "livePulse 2.2s ease-out infinite",
         shimmer: "shimmer 2s linear infinite",
       },
@@ -66,8 +69,8 @@ export default {
           to: { opacity: "1", transform: "scale(1)" },
         },
         pageIn: {
-          from: { opacity: "0", transform: "translateX(12px)" },
-          to: { opacity: "1", transform: "translateX(0)" },
+          from: { opacity: "0", transform: "translateX(24px) scale(0.99)" },
+          to: { opacity: "1", transform: "translateX(0) scale(1)" },
         },
         livePulse: {
           "0%, 100%": { opacity: "1", transform: "scale(1)" },

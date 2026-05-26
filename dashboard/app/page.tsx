@@ -1,7 +1,6 @@
 // Overview — single hero card. Today totals up top with animated
 // count-up, pace + best-day, per-store breakdown. iOS-style.
 import Link from "next/link";
-import Nav from "@/components/Nav";
 import LiveRefresh from "@/components/LiveRefresh";
 import AnimatedNumber from "@/components/AnimatedNumber";
 import { createClient } from "@/lib/supabase/server";
@@ -43,7 +42,6 @@ export default async function Home() {
 
   return (
     <>
-      <Nav />
       <LiveRefresh />
       <main className="px-4 pb-20 max-w-2xl mx-auto">
         {storeList.length === 0 ? <Empty /> : (
@@ -105,6 +103,7 @@ function Overview({
         <div className="text-center">
           <AnimatedNumber
             value={todayCount}
+            format="count"
             className="num block text-[88px] sm:text-[104px] leading-[0.95] font-bold"
           />
           <div className="mt-3 text-[14px] text-text-2 font-medium">
@@ -112,12 +111,12 @@ function Overview({
           </div>
         </div>
 
-        {/* TODAY REVENUE */}
-        <div className="text-center mt-9">
+        {/* TODAY REVENUE — money green */}
+        <div className="text-center mt-10">
           <AnimatedNumber
             value={todayRev}
-            format={(n) => (n > 0 ? formatMoneyMinor(Math.round(n)) ?? "$0" : "$0")}
-            className="num block text-[48px] sm:text-[60px] leading-none font-semibold text-white/85"
+            format="money"
+            className="num block text-[48px] sm:text-[60px] leading-none font-semibold text-money"
           />
           <div className="mt-2.5 text-[14px] text-text-2 font-medium">
             earned today
@@ -176,7 +175,7 @@ function Overview({
                     {stats.today.toLocaleString("en-US")}
                   </div>
                   {revToday > 0 && (
-                    <div className="text-[12px] text-text-3 num-tight mt-0.5">
+                    <div className="text-[12px] text-money-soft num-tight mt-0.5 font-semibold">
                       {formatMoneyMinor(revToday, store.currency)}
                     </div>
                   )}

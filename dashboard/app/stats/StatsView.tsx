@@ -76,12 +76,9 @@ export default function StatsView({
           <>
             <AnimatedNumber
               value={displayRev}
-              format={(n) =>
-                n > 0
-                  ? formatMoneyMinor(Math.round(n), currency) ?? "$0"
-                  : "$0"
-              }
-              className="num block text-[36px] sm:text-[44px] leading-none font-semibold text-white/85 mt-8"
+              format="money"
+              currency={currency}
+              className="num block text-[36px] sm:text-[44px] leading-none font-semibold text-money mt-8"
             />
             <div className="mt-2.5 text-[13px] text-text-2 font-medium">
               {range === "7d" && "earned last 7 days"}
@@ -155,7 +152,7 @@ export default function StatsView({
                       {m.count.toLocaleString("en-US")}
                     </span>
                     {avg != null && (
-                      <span className="num-tight text-[12px] text-text-3 ml-2.5">
+                      <span className="num-tight text-[12px] text-money-soft ml-2.5 font-semibold">
                         {formatMoneyMinor(m.count * avg, currency)}
                       </span>
                     )}

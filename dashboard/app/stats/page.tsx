@@ -1,4 +1,3 @@
-import Nav from "@/components/Nav";
 import StatsView from "./StatsView";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,11 +18,8 @@ export default async function StatsPage() {
   ]);
 
   return (
-    <>
-      <Nav />
-      <main className="px-4 pb-16 max-w-2xl mx-auto">
-        <StatsView stores={stores ?? []} snapshots={snapshots ?? []} />
-      </main>
-    </>
+    <main className="px-4 pb-20 max-w-2xl mx-auto">
+      <StatsView stores={stores ?? []} snapshots={snapshots ?? []} />
+    </main>
   );
 }
