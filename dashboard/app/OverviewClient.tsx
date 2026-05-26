@@ -74,10 +74,12 @@ export default function OverviewClient({
 
   return (
     <>
-      <div className="flex justify-end mt-3 mb-1">
-        <RefreshButton />
-      </div>
-      <section className="glass px-6 sm:px-8 pt-11 pb-3 animate-fade-up">
+      <section className="glass mt-4 px-6 sm:px-8 pt-11 pb-3 animate-fade-up relative">
+        {/* Refresh — small icon in top-right corner of hero */}
+        <div className="absolute top-3 right-3">
+          <RefreshButton />
+        </div>
+
         {/* TODAY COUNT */}
         <div className="text-center">
           <AnimatedNumber

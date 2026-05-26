@@ -7,19 +7,34 @@ import type { Snapshot } from "./stats";
 
 export type Sale = { t: number; n: number };  // n sales at time t
 
-// Flatten snapshots → individual sale events (one per non-zero delta
-// between consecutive snapshots, attributed to the later timestamp).
+// Flatten snapshots → individual sale events. Critically: snapshots
+// from different stores have unrelated sold_count values (one store's
+// lifetime might be 600 while another's is 2), so we must compute
+// deltas WITHIN each store, never across them. The naive "sort all,
+// take consecutive deltas" approach inflates totals by the gap
+// between stores' lifetime counters.
 export function snapshotsToSales(snaps: Snapshot[]): Sale[] {
   if (snaps.length < 2) return [];
-  const sorted = [...snaps].sort(
-    (a, b) => Date.parse(a.taken_at) - Date.parse(b.taken_at),
-  );
+
+  const byStore = new Map<string, Snapshot[]>();
+  for (const s of snaps) {
+    let arr = byStore.get(s.store_id);
+    if (!arr) byStore.set(s.store_id, (arr = []));
+    arr.push(s);
+  }
+
   const sales: Sale[] = [];
-  for (let i = 1; i < sorted.length; i++) {
-    const prev = sorted[i - 1].sold_count;
-    const cur = sorted[i].sold_count;
-    if (cur > prev) {
-      sales.push({ t: Date.parse(sorted[i].taken_at), n: cur - prev });
+  for (const storeSnaps of byStore.values()) {
+    if (storeSnaps.length < 2) continue;
+    const sorted = [...storeSnaps].sort(
+      (a, b) => Date.parse(a.taken_at) - Date.parse(b.taken_at),
+    );
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = sorted[i - 1].sold_count;
+      const cur = sorted[i].sold_count;
+      if (cur > prev) {
+        sales.push({ t: Date.parse(sorted[i].taken_at), n: cur - prev });
+      }
     }
   }
   return sales;

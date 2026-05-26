@@ -107,7 +107,7 @@ export default function Nav({
 
       <nav
         ref={containerRef}
-        className="relative flex p-1 rounded-full bg-white/[0.04] border border-line text-[12.5px] backdrop-blur-md"
+        className="relative flex p-1 rounded-full bg-white/[0.04] border border-line text-[13px] sm:text-[13px] backdrop-blur-md"
       >
         {indicator && (
           <span
@@ -126,9 +126,13 @@ export default function Nav({
                 tabRefs.current[i] = el;
               }}
               onClick={() => setPendingIdx(i)}
-              className={`relative z-10 flex-1 text-center px-2 py-2 rounded-full font-semibold transition-colors duration-150 active:scale-[0.96] ${
+              className={`relative z-10 flex-1 text-center px-1.5 sm:px-2 py-2.5 rounded-full font-semibold transition-colors duration-150 active:scale-[0.96] touch-manipulation ${
                 active ? "text-[#0A0A0B]" : "text-text-2 hover:text-white"
               }`}
+              style={{
+                WebkitTapHighlightColor: "transparent",
+                minHeight: 40,
+              }}
             >
               {l.label}
             </Link>

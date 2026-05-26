@@ -19,34 +19,47 @@ export default function RefreshButton({
       const res = await fetch("/api/refresh-now", { method: "POST" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setState("waiting");
-      // Refresh dashboard data after the extension has had time to poll.
-      // We can't know the exact moment it pushes back, so we re-pull
-      // after ~25s as a sane default — the LiveRefresh subscription
-      // will also catch any earlier inserts.
       window.setTimeout(() => {
         router.refresh();
         setState("done");
-        window.setTimeout(() => setState("idle"), 2000);
+        window.setTimeout(() => setState("idle"), 1500);
       }, 25_000);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setState("error");
-      window.setTimeout(() => setState("idle"), 3000);
+      window.setTimeout(() => setState("idle"), 2500);
     }
   }
 
   const busy = state === "sending" || state === "waiting";
 
+  let color = "rgba(255,255,255,0.55)";
+  if (state === "done") color = "#34D399";
+  else if (state === "error") color = "#F87171";
+  else if (busy) color = "rgba(255,255,255,0.7)";
+
   return (
     <button
       onClick={ping}
       disabled={busy}
-      className={`inline-flex items-center gap-2 ghost ${className}`}
-      style={busy ? { opacity: 0.7, cursor: "wait" } : undefined}
+      title={
+        state === "error"
+          ? error ?? "Failed"
+          : busy
+            ? "Waiting for extension…"
+            : "Refresh"
+      }
+      className={`inline-flex items-center justify-center rounded-full w-9 h-9 transition-all active:scale-90 ${className}`}
+      style={{
+        background: "rgba(255,255,255,0.05)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        color,
+        cursor: busy ? "wait" : "pointer",
+      }}
     >
       <svg
-        width="13"
-        height="13"
+        width="15"
+        height="15"
         viewBox="0 0 14 14"
         fill="none"
         className={busy ? "animate-spin" : ""}
@@ -66,11 +79,6 @@ export default function RefreshButton({
           fill="none"
         />
       </svg>
-      {state === "idle" && "Refresh"}
-      {state === "sending" && "Pinging…"}
-      {state === "waiting" && "Waiting for extension…"}
-      {state === "done" && "Refreshed"}
-      {state === "error" && (error ?? "Failed")}
     </button>
   );
 }

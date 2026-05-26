@@ -16,12 +16,18 @@ import {
 import { colorForStore } from "@/lib/colors";
 
 type Range = "7d" | "30d" | "12w" | "12m";
+type ChartKind = "bar" | "line";
 
 const RANGE_OPTIONS: { value: Range; label: string }[] = [
   { value: "7d", label: "7D" },
   { value: "30d", label: "30D" },
   { value: "12w", label: "12W" },
   { value: "12m", label: "12M" },
+];
+
+const CHART_OPTIONS: { value: ChartKind; label: string }[] = [
+  { value: "bar", label: "Bars" },
+  { value: "line", label: "Line" },
 ];
 
 export default function StatsView({
@@ -33,6 +39,7 @@ export default function StatsView({
 }) {
   const [storeId, setStoreId] = useState<string>("all");
   const [range, setRange] = useState<Range>("30d");
+  const [chartKind, setChartKind] = useState<ChartKind>("bar");
   const [selectedBar, setSelectedBar] = useState<number | null>(null);
 
   const snapsByStore = useMemo(() => groupSnapshots(snapshots), [snapshots]);
@@ -89,6 +96,11 @@ export default function StatsView({
             setRange(v);
             setSelectedBar(null);
           }}
+        />
+        <Dropdown<ChartKind>
+          value={chartKind}
+          options={CHART_OPTIONS}
+          onChange={setChartKind}
         />
       </div>
 
@@ -168,12 +180,21 @@ export default function StatsView({
           )}
         </div>
 
-        <Chart
-          data={series}
-          selected={selectedBar}
-          onSelect={(i) => setSelectedBar(selectedBar === i ? null : i)}
-          accent={accent}
-        />
+        {chartKind === "bar" ? (
+          <Chart
+            data={series}
+            selected={selectedBar}
+            onSelect={(i) => setSelectedBar(selectedBar === i ? null : i)}
+            accent={accent}
+          />
+        ) : (
+          <LineChart
+            data={series}
+            selected={selectedBar}
+            onSelect={(i) => setSelectedBar(selectedBar === i ? null : i)}
+            accent={accent ?? "#ffffff"}
+          />
+        )}
       </section>
 
       {/* HEATMAP */}
@@ -295,6 +316,119 @@ function Chart({
           );
         })}
       </div>
+      <div className="flex gap-1 mt-2">
+        {data.map((d, i) => (
+          <div
+            key={(d.key ?? d.date ?? d.label) + "-lbl"}
+            className="flex-1 text-[9.5px] text-text-3/80 text-center font-medium truncate"
+          >
+            {i % labelStride === 0 ? d.label : ""}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LineChart({
+  data,
+  selected,
+  onSelect,
+  accent,
+}: {
+  data: { key?: string; date?: string; label: string; count: number }[];
+  selected: number | null;
+  onSelect: (i: number) => void;
+  accent: string;
+}) {
+  const max = Math.max(1, ...data.map((d) => d.count));
+  const w = 600;
+  const h = 180;
+  const padX = 8;
+  const padY = 14;
+  const usableW = w - padX * 2;
+  const usableH = h - padY * 2;
+  const stepX = data.length > 1 ? usableW / (data.length - 1) : 0;
+
+  const points = data.map((d, i) => {
+    const x = padX + i * stepX;
+    const y = padY + usableH - (d.count / max) * usableH;
+    return [x, y] as const;
+  });
+
+  // Smooth Catmull-Rom-ish curve through points.
+  let path = "";
+  if (points.length > 0) {
+    path = `M ${points[0][0]},${points[0][1]}`;
+    for (let i = 1; i < points.length; i++) {
+      const [x, y] = points[i];
+      const [px, py] = points[i - 1];
+      const cpx = (px + x) / 2;
+      path += ` Q ${cpx},${py} ${x},${y}`;
+    }
+  }
+
+  const areaPath = points.length
+    ? `${path} L ${points[points.length - 1][0]},${h} L ${points[0][0]},${h} Z`
+    : "";
+
+  const labelStride = data.length > 14 ? Math.ceil(data.length / 7) : 1;
+  const gradId = `line-fill-${Math.abs(
+    accent.split("").reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 0),
+  )}`;
+
+  return (
+    <div>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="w-full h-44 sm:h-48"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={accent} stopOpacity="0.35" />
+            <stop offset="100%" stopColor={accent} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {areaPath && <path d={areaPath} fill={`url(#${gradId})`} />}
+        {path && (
+          <path
+            d={path}
+            fill="none"
+            stroke={accent}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+        {points.map(([x, y], i) => {
+          const isSel = selected === i;
+          return (
+            <g key={data[i].key ?? data[i].date ?? i}>
+              <circle
+                cx={x}
+                cy={y}
+                r={isSel ? 5 : 2.5}
+                fill={isSel ? accent : "#0A0A0B"}
+                stroke={accent}
+                strokeWidth={isSel ? 2 : 1.5}
+                style={{
+                  filter: isSel ? `drop-shadow(0 0 6px ${accent})` : undefined,
+                }}
+              />
+              {/* Invisible larger hit target for tapping */}
+              <circle
+                cx={x}
+                cy={y}
+                r={14}
+                fill="transparent"
+                onClick={() => onSelect(i)}
+                style={{ cursor: "pointer" }}
+              />
+            </g>
+          );
+        })}
+      </svg>
       <div className="flex gap-1 mt-2">
         {data.map((d, i) => (
           <div

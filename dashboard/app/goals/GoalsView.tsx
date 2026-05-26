@@ -106,7 +106,21 @@ export default function GoalsView({
 
       {/* Featured ring */}
       {primary ? (
-        <section className="glass p-7 sm:p-10 mb-3 text-center animate-fade-up">
+        <section className="glass p-7 sm:p-10 mb-3 text-center animate-fade-up relative">
+          <button
+            onClick={() => removeGoal(primary.goal.id)}
+            aria-label="Remove goal"
+            className="absolute top-3 right-3 w-9 h-9 rounded-full inline-flex items-center justify-center transition-colors active:scale-90"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "rgba(255,255,255,0.55)",
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </button>
           <FeaturedGoal goal={primary.goal} value={primary.value} stores={stores} />
         </section>
       ) : (
