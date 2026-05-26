@@ -65,6 +65,24 @@ export async function ingest(results) {
   return body;
 }
 
+// GET /refresh-check — tiny endpoint, returns just the latest manual
+// refresh timestamp so the extension can fire an immediate Depop poll
+// when the user taps the refresh button on the dashboard.
+export async function fetchRefreshCheck() {
+  const { supabaseUrl, deviceToken } = await getPairing();
+  if (!supabaseUrl || !deviceToken) throw new Error("not paired");
+  const res = await fetch(fnUrl(supabaseUrl, "refresh-check"), {
+    headers: { authorization: `Bearer ${deviceToken}` },
+  });
+  if (res.status === 401) {
+    await clearPairing();
+    throw new Error("device token rejected — re-pair in settings");
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `check failed (HTTP ${res.status})`);
+  return body.manual_refresh_at ?? null;
+}
+
 // GET /dashboard-data — read the same blob the dashboard reads.
 export async function fetchDashboardData() {
   const { supabaseUrl, deviceToken } = await getPairing();

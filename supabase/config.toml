@@ -10,3 +10,6 @@ verify_jwt = false  # auth via device-token bearer
 
 [functions.dashboard-data]
 verify_jwt = false  # auth via device-token bearer
+
+[functions.refresh-check]
+verify_jwt = false  # auth via device-token bearer

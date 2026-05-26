@@ -19,6 +19,7 @@ import {
   snapshotsToSales,
 } from "@/lib/analytics";
 import { colorForStore } from "@/lib/colors";
+import RefreshButton from "@/components/RefreshButton";
 
 const LONG_PRESS_MS = 500;
 
@@ -73,7 +74,10 @@ export default function OverviewClient({
 
   return (
     <>
-      <section className="glass mt-4 px-6 sm:px-8 pt-11 pb-3 animate-fade-up">
+      <div className="flex justify-end mt-3 mb-1">
+        <RefreshButton />
+      </div>
+      <section className="glass px-6 sm:px-8 pt-11 pb-3 animate-fade-up">
         {/* TODAY COUNT */}
         <div className="text-center">
           <AnimatedNumber
@@ -178,11 +182,11 @@ function StoreRow({
 }) {
   const timer = useRef<number | null>(null);
   const moved = useRef(false);
-  // Always use the username — display_name is a legacy column we no
-  // longer surface anywhere.
   const label = store.username;
   const revToday = stats.todayRevenue ?? 0;
-  const tint = colorForStore(store);
+  const hasError = !!stats.error;
+  // On error we override the per-store tint with red so it pops.
+  const tint = hasError ? "#F87171" : colorForStore(store);
 
   function startPress() {
     moved.current = false;
@@ -229,14 +233,23 @@ function StoreRow({
       />
 
       <div className="min-w-0 flex items-center gap-3">
-        <FreshnessDot lastSeen={stats.lastSeen} hasError={!!stats.error} tint={tint} />
+        <FreshnessDot lastSeen={stats.lastSeen} hasError={hasError} tint={tint} />
         <div className="min-w-0">
-          <div className="text-[16px] font-medium truncate tracking-tight flex items-center gap-1.5">
+          <div
+            className="text-[16px] font-medium truncate tracking-tight flex items-center gap-1.5"
+            style={hasError ? { color: "#F87171" } : undefined}
+          >
             {label}
-            {onFire && <Flame size={11} />}
+            {onFire && !hasError && <Flame size={11} />}
           </div>
           <div className="text-[12px] text-text-3 truncate mt-0.5">
-            depop.com/{store.username}
+            {hasError ? (
+              <span style={{ color: "#FCA5A5" }}>
+                Banned or blocked — {stats.error?.message}
+              </span>
+            ) : (
+              <>depop.com/{store.username}</>
+            )}
           </div>
         </div>
       </div>
@@ -263,9 +276,16 @@ function FreshnessDot({
   hasError: boolean;
   tint: string;
 }) {
-  // Color is the store's tint; brightness/glow reflects freshness.
   if (hasError) {
-    return <span className="w-2 h-2 rounded-full bg-amber-300/90 flex-shrink-0" />;
+    return (
+      <span
+        className="w-2 h-2 rounded-full flex-shrink-0"
+        style={{
+          background: "#F87171",
+          boxShadow: "0 0 8px rgba(248,113,113,0.7)",
+        }}
+      />
+    );
   }
   const fresh = lastSeen && Date.now() - lastSeen < 15 * 60_000;
   return (

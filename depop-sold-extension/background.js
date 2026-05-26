@@ -6,11 +6,20 @@
 // things stored locally are the pairing creds (supabaseUrl,
 // deviceToken, userId) and the refresh interval.
 
-import { fetchDashboardData, ingest, isPaired } from "./lib/api.js";
+import {
+  fetchDashboardData,
+  fetchRefreshCheck,
+  ingest,
+  isPaired,
+} from "./lib/api.js";
 
 const SOLD_RX = /(\d[\d,]*)\s+sold\b/i;
 const DEFAULT_REFRESH_MINUTES = 5;
 const ALARM_NAME = "refresh";
+const CONTROL_ALARM = "control-check";
+const CONTROL_PERIOD_MIN = 0.5; // 30s — minimum Chrome allows in dev.
+
+let lastManualRefreshSeen = null;
 
 const onlyDigits = (s) => parseInt(String(s).replace(/[^\d]/g, ""), 10);
 
@@ -24,12 +33,23 @@ async function getRefreshMinutes() {
 async function ensureAlarm() {
   const period = await getRefreshMinutes();
   const existing = await chrome.alarms.get(ALARM_NAME);
-  if (existing && existing.periodInMinutes === period) return;
-  await chrome.alarms.clear(ALARM_NAME);
-  await chrome.alarms.create(ALARM_NAME, {
-    periodInMinutes: period,
-    delayInMinutes: 0.05,
-  });
+  if (!existing || existing.periodInMinutes !== period) {
+    await chrome.alarms.clear(ALARM_NAME);
+    await chrome.alarms.create(ALARM_NAME, {
+      periodInMinutes: period,
+      delayInMinutes: 0.05,
+    });
+  }
+
+  // Faster alarm: checks for manual refresh requests every 30 seconds.
+  const ctrl = await chrome.alarms.get(CONTROL_ALARM);
+  if (!ctrl || ctrl.periodInMinutes !== CONTROL_PERIOD_MIN) {
+    await chrome.alarms.clear(CONTROL_ALARM);
+    await chrome.alarms.create(CONTROL_ALARM, {
+      periodInMinutes: CONTROL_PERIOD_MIN,
+      delayInMinutes: 0.1,
+    });
+  }
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -48,7 +68,28 @@ chrome.runtime.onStartup.addListener(async () => {
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM_NAME) refreshAll().catch(() => {});
+  else if (alarm.name === CONTROL_ALARM) checkManualRefresh().catch(() => {});
 });
+
+async function checkManualRefresh() {
+  if (!(await isPaired())) return;
+  let ts;
+  try {
+    ts = await fetchRefreshCheck();
+  } catch {
+    return;
+  }
+  if (!ts) return;
+  // Initialize on first sight so we don't fire on a stale value.
+  if (lastManualRefreshSeen == null) {
+    lastManualRefreshSeen = ts;
+    return;
+  }
+  if (ts !== lastManualRefreshSeen) {
+    lastManualRefreshSeen = ts;
+    refreshAll().catch(() => {});
+  }
+}
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
