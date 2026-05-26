@@ -87,8 +87,8 @@ export default function Nav({
   }, [displayedIdx]);
 
   return (
-    <header className="px-4 pt-7 pb-4 max-w-2xl mx-auto animate-fade-in">
-      <div className="flex justify-center mb-6">
+    <header className="px-4 pt-5 sm:pt-7 pb-3 max-w-2xl mx-auto animate-fade-in">
+      <div className="flex justify-center mb-4 sm:mb-5">
         <Link href="/" className="group inline-flex items-center gap-2.5 select-none">
           <span className="font-rounded text-[13px] font-bold tracking-[0.32em] text-white/95">
             SOLD

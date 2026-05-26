@@ -8,6 +8,8 @@ import { formatMoneyMinor, groupSnapshots } from "@/lib/stats";
 import {
   bestDayThisMonth,
   dailySeries,
+  dailySeriesPerStore,
+  hourOfWeekPerStore,
   salesByHourOfWeek,
   salesByMonth,
   snapshotsToSales,
@@ -68,11 +70,28 @@ export default function StatsView({
 
   const storeOptions = [
     { value: "all", label: "All stores" },
+    { value: "compare", label: "Compare stores" },
     ...stores.map((s) => ({
       value: s.id,
       label: s.username,
     })),
   ];
+
+  const isCompare = storeId === "compare";
+
+  // Per-store series for Compare mode.
+  const perStoreSeries = useMemo(() => {
+    if (!isCompare) return null;
+    return dailySeriesPerStore(
+      snapsByStore,
+      range === "7d" ? 7 : range === "30d" ? 30 : range === "12w" ? 84 : 365,
+    );
+  }, [isCompare, snapsByStore, range]);
+
+  const perStoreHeatmap = useMemo(() => {
+    if (!isCompare) return null;
+    return hourOfWeekPerStore(snapsByStore);
+  }, [isCompare, snapsByStore]);
 
   const rangeLabel = {
     "7d": "last 7 days",
@@ -180,7 +199,23 @@ export default function StatsView({
           )}
         </div>
 
-        {chartKind === "bar" ? (
+        {isCompare && perStoreSeries ? (
+          <>
+            {chartKind === "bar" ? (
+              <CompareBarChart
+                stores={stores}
+                perStoreSeries={perStoreSeries}
+                days={range === "7d" ? 7 : range === "30d" ? 30 : range === "12w" ? 12 : 12}
+              />
+            ) : (
+              <CompareLineChart
+                stores={stores}
+                perStoreSeries={perStoreSeries}
+              />
+            )}
+            <Legend stores={stores} />
+          </>
+        ) : chartKind === "bar" ? (
           <Chart
             data={series}
             selected={selectedBar}
@@ -208,7 +243,14 @@ export default function StatsView({
         <div className="text-[11.5px] text-text-3 mb-5">
           Hours of day × days of week
         </div>
-        <Heatmap grid={heatmap} />
+        {isCompare && perStoreHeatmap ? (
+          <CompareHeatmap stores={stores} grids={perStoreHeatmap} />
+        ) : (
+          <Heatmap grid={heatmap} />
+        )}
+        {isCompare && (
+          <Legend stores={stores} />
+        )}
       </section>
 
       {/* MONTHLY LIST */}
@@ -439,6 +481,275 @@ function LineChart({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// === Compare-mode components: stacked bars, multi-line, multi-color heatmap ===
+
+function CompareBarChart({
+  stores,
+  perStoreSeries,
+  days,
+}: {
+  stores: Store[];
+  perStoreSeries: Map<string, { date: string; label: string; count: number }[]>;
+  days: number;
+}) {
+  // Build a per-day array of { storeId → count } over the right window.
+  // Each per-store series has `days` length already (or fewer for monthly).
+  const length = days;
+  const dayLabels: string[] = [];
+  const stacked: { store: Store; count: number }[][] = [];
+  for (let i = 0; i < length; i++) stacked.push([]);
+
+  for (const store of stores) {
+    const series = perStoreSeries.get(store.id) ?? [];
+    for (let i = 0; i < length; i++) {
+      const point = series[series.length - length + i] ?? series[i];
+      if (!point) continue;
+      if (!dayLabels[i]) dayLabels[i] = point.label;
+      stacked[i].push({ store, count: point.count });
+    }
+  }
+
+  const totalsPerDay = stacked.map((arr) => arr.reduce((a, b) => a + b.count, 0));
+  const max = Math.max(1, ...totalsPerDay);
+  const labelStride = length > 14 ? Math.ceil(length / 7) : 1;
+
+  return (
+    <div>
+      <div className="flex items-end gap-1 h-44 sm:h-48">
+        {stacked.map((seg, i) => {
+          const total = totalsPerDay[i];
+          const heightPct = (total / max) * 100;
+          return (
+            <div
+              key={i}
+              className="flex-1 h-full flex flex-col justify-end"
+            >
+              <div
+                className="w-full rounded-md overflow-hidden flex flex-col-reverse"
+                style={{
+                  height: `${heightPct}%`,
+                  minHeight: total > 0 ? "4px" : "0",
+                  animation: `fadeUp 0.55s cubic-bezier(0.16,1,0.3,1) ${i * 22}ms both`,
+                }}
+              >
+                {seg
+                  .filter((s) => s.count > 0)
+                  .map((s) => (
+                    <div
+                      key={s.store.id}
+                      style={{
+                        height: `${(s.count / total) * 100}%`,
+                        background: colorForStore(s.store),
+                      }}
+                      title={`${s.store.username}: ${s.count}`}
+                    />
+                  ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-1 mt-2">
+        {dayLabels.map((label, i) => (
+          <div
+            key={i}
+            className="flex-1 text-[9.5px] text-text-3/80 text-center font-medium truncate"
+          >
+            {i % labelStride === 0 ? label : ""}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CompareLineChart({
+  stores,
+  perStoreSeries,
+}: {
+  stores: Store[];
+  perStoreSeries: Map<string, { date: string; label: string; count: number }[]>;
+}) {
+  // All series should have the same length and labels — take the first.
+  const firstSeries = perStoreSeries.values().next().value ??
+    ([] as { date: string; label: string; count: number }[]);
+  const length = firstSeries.length;
+  if (length === 0) return null;
+
+  const w = 600;
+  const h = 180;
+  const padX = 8;
+  const padY = 14;
+  const usableW = w - padX * 2;
+  const usableH = h - padY * 2;
+  const stepX = length > 1 ? usableW / (length - 1) : 0;
+
+  // Max across all stores at any single day, for shared Y-scale.
+  let max = 1;
+  for (const series of perStoreSeries.values()) {
+    for (const pt of series) if (pt.count > max) max = pt.count;
+  }
+
+  const labelStride = length > 14 ? Math.ceil(length / 7) : 1;
+
+  return (
+    <div>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="w-full h-44 sm:h-48"
+        preserveAspectRatio="none"
+      >
+        {stores.map((store) => {
+          const series = perStoreSeries.get(store.id) ?? [];
+          if (series.length === 0) return null;
+          const color = colorForStore(store);
+          const points = series.map((d, i) => {
+            const x = padX + i * stepX;
+            const y = padY + usableH - (d.count / max) * usableH;
+            return [x, y] as const;
+          });
+          let path = `M ${points[0][0]},${points[0][1]}`;
+          for (let i = 1; i < points.length; i++) {
+            const [x, y] = points[i];
+            const [px, py] = points[i - 1];
+            const cpx = (px + x) / 2;
+            path += ` Q ${cpx},${py} ${x},${y}`;
+          }
+          return (
+            <g key={store.id}>
+              <path
+                d={path}
+                fill="none"
+                stroke={color}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              {points.map(([x, y], i) => (
+                <circle
+                  key={i}
+                  cx={x}
+                  cy={y}
+                  r={2}
+                  fill={color}
+                  opacity={0.85}
+                />
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+      <div className="flex gap-1 mt-2">
+        {firstSeries.map((d, i) => (
+          <div
+            key={i}
+            className="flex-1 text-[9.5px] text-text-3/80 text-center font-medium truncate"
+          >
+            {i % labelStride === 0 ? d.label : ""}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CompareHeatmap({
+  stores,
+  grids,
+}: {
+  stores: Store[];
+  grids: Map<string, number[][]>;
+}) {
+  // Per (day, hour) cell, sum across stores → intensity; split colors
+  // by each store's contribution.
+  const totalGrid: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
+  for (const grid of grids.values()) {
+    for (let d = 0; d < 7; d++) {
+      for (let h = 0; h < 24; h++) totalGrid[d][h] += grid[d][h];
+    }
+  }
+  const max = Math.max(1, ...totalGrid.flat());
+
+  return (
+    <div>
+      <div
+        className="grid gap-[3px]"
+        style={{ gridTemplateColumns: "18px repeat(24, 1fr)" }}
+      >
+        <div />
+        {Array.from({ length: 24 }, (_, h) => (
+          <div key={h} className="text-[9px] text-text-3/70 text-center font-medium">
+            {h % 6 === 0 ? h : ""}
+          </div>
+        ))}
+        {totalGrid.map((row, day) => (
+          <div key={day} className="contents">
+            <div className="text-[10.5px] text-text-3 flex items-center justify-center font-semibold">
+              {DAY_LABELS[day]}
+            </div>
+            {row.map((total, hour) => {
+              if (total === 0) {
+                return (
+                  <div
+                    key={hour}
+                    className="aspect-square rounded-[3px]"
+                    style={{ backgroundColor: "rgba(255,255,255,0.04)" }}
+                  />
+                );
+              }
+              const intensity = total / max;
+              return (
+                <div
+                  key={hour}
+                  className="aspect-square rounded-[3px] overflow-hidden flex"
+                  style={{ opacity: 0.35 + intensity * 0.65 }}
+                  title={stores
+                    .map((s) => {
+                      const c = grids.get(s.id)?.[day][hour] ?? 0;
+                      return c > 0 ? `${s.username}: ${c}` : null;
+                    })
+                    .filter(Boolean)
+                    .join("\n")}
+                >
+                  {stores.map((s) => {
+                    const c = grids.get(s.id)?.[day][hour] ?? 0;
+                    if (c === 0) return null;
+                    return (
+                      <div
+                        key={s.id}
+                        style={{
+                          flex: c,
+                          background: colorForStore(s),
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Legend({ stores }: { stores: Store[] }) {
+  return (
+    <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1.5">
+      {stores.map((s) => (
+        <div key={s.id} className="inline-flex items-center gap-1.5 text-[11px]">
+          <span
+            className="w-2 h-2 rounded-full"
+            style={{ background: colorForStore(s) }}
+          />
+          <span className="text-text-2">{s.username}</span>
+        </div>
+      ))}
     </div>
   );
 }

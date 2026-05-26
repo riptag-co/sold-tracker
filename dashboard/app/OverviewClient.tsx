@@ -74,7 +74,7 @@ export default function OverviewClient({
 
   return (
     <>
-      <section className="glass mt-4 px-6 sm:px-8 pt-11 pb-3 animate-fade-up relative">
+      <section className="glass mt-2 sm:mt-4 px-5 sm:px-8 pt-9 sm:pt-11 pb-2 animate-fade-up relative">
         {/* Refresh — small icon in top-right corner of hero */}
         <div className="absolute top-3 right-3">
           <RefreshButton />

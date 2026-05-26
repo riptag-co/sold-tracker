@@ -258,6 +258,32 @@ export function isOnFire(
   return { onFire, today, avg, ratio };
 }
 
+// Per-store daily series — returns one daily series per store_id.
+// Used by Compare mode to draw a separate line/bar per shop.
+export function dailySeriesPerStore(
+  snapsByStore: Map<string, Snapshot[]>,
+  days: number,
+  now = new Date(),
+): Map<string, { date: string; label: string; count: number }[]> {
+  const out = new Map<string, { date: string; label: string; count: number }[]>();
+  for (const [storeId, snaps] of snapsByStore) {
+    const sales = snapshotsToSales(snaps);
+    out.set(storeId, dailySeries(sales, days, now));
+  }
+  return out;
+}
+
+// Per-store hour-of-week — returns one 7x24 grid per store_id.
+export function hourOfWeekPerStore(
+  snapsByStore: Map<string, Snapshot[]>,
+): Map<string, number[][]> {
+  const out = new Map<string, number[][]>();
+  for (const [storeId, snaps] of snapsByStore) {
+    out.set(storeId, salesByHourOfWeek(snapshotsToSales(snaps)));
+  }
+  return out;
+}
+
 // Sparkline: last `days` days of counts, normalized to [0..1].
 // Returns the values array AND the max so callers can label it.
 export function sparkline(
