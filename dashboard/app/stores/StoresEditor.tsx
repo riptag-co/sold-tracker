@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { STORE_PALETTE, colorForStore } from "@/lib/colors";
 import type { Store } from "@/lib/stats";
 
 export default function StoresEditor({ initial }: { initial: Store[] }) {
@@ -30,7 +31,7 @@ export default function StoresEditor({ initial }: { initial: Store[] }) {
     const { data, error } = await supabase
       .from("stores")
       .insert(usernames.map((username) => ({ username })))
-      .select("id, username, display_name, avg_price_minor, currency");
+      .select("id, username, display_name, avg_price_minor, currency, color");
     if (error) {
       setError(error.message);
       return;
@@ -131,25 +132,15 @@ function StoreRow({
   onRemove: () => void;
   onUpdate: (patch: Partial<Store>) => Promise<void>;
 }) {
-  const [name, setName] = useState(store.display_name ?? "");
   const [price, setPrice] = useState(
     store.avg_price_minor != null ? (store.avg_price_minor / 100).toString() : "",
   );
   const [savedFlash, setSavedFlash] = useState(false);
+  const currentColor = colorForStore(store);
 
   function flashSaved() {
     setSavedFlash(true);
     setTimeout(() => setSavedFlash(false), 1200);
-  }
-
-  async function commitName() {
-    const v = name.trim() || null;
-    if (v !== (store.display_name ?? null)) {
-      try {
-        await onUpdate({ display_name: v });
-        flashSaved();
-      } catch { /* error shown at top of editor */ }
-    }
   }
 
   async function commitPrice() {
@@ -160,13 +151,28 @@ function StoreRow({
       try {
         await onUpdate({ avg_price_minor: minor });
         flashSaved();
-      } catch { /* error shown at top of editor */ }
+      } catch { /* error shown at top */ }
     }
   }
 
+  async function setColor(color: string | null) {
+    if (color === (store.color ?? null)) return;
+    try {
+      await onUpdate({ color });
+      flashSaved();
+    } catch { /* error shown at top */ }
+  }
+
   return (
-    <div className="glass p-5">
-      <div className="flex items-start justify-between gap-3 mb-4">
+    <div className="glass p-5 relative overflow-hidden">
+      {/* Subtle accent stripe on the left edge using the store color */}
+      <span
+        aria-hidden
+        className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full"
+        style={{ background: currentColor }}
+      />
+
+      <div className="flex items-start justify-between gap-3 mb-4 pl-2">
         <div className="min-w-0">
           <div className="font-semibold truncate text-[16px] tracking-tight">
             {store.username}
@@ -191,22 +197,33 @@ function StoreRow({
           <button className="ghost" onClick={onRemove}>Remove</button>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+      <div className="pl-2 space-y-4">
+        {/* Color picker */}
+        <div>
+          <div className="text-[11px] text-text-3 font-medium mb-2">
+            Color
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <SwatchAuto
+              selected={store.color == null}
+              autoColor={currentColor}
+              onClick={() => setColor(null)}
+            />
+            {STORE_PALETTE.map((c) => (
+              <Swatch
+                key={c}
+                color={c}
+                selected={store.color === c}
+                onClick={() => setColor(c)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Avg price */}
         <label className="block">
-          <span className="text-[11px] text-text-3 font-medium block mb-1.5">
-            Display name
-          </span>
-          <input
-            className="field text-[14px]"
-            type="text"
-            placeholder="optional"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={commitName}
-          />
-        </label>
-        <label className="block">
-          <span className="text-[11px] text-text-3 font-medium block mb-1.5">
+          <span className="text-[11px] text-text-3 font-medium block mb-2">
             Avg price ({store.currency})
           </span>
           <input
@@ -222,5 +239,65 @@ function StoreRow({
         </label>
       </div>
     </div>
+  );
+}
+
+function Swatch({
+  color,
+  selected,
+  onClick,
+}: {
+  color: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`Pick color ${color}`}
+      className={`w-7 h-7 rounded-full transition-all duration-200 ease-ios-spring relative active:scale-90 ${
+        selected
+          ? "ring-2 ring-white ring-offset-2 ring-offset-[#0A0A0B]"
+          : "hover:scale-110"
+      }`}
+      style={{
+        background: color,
+        boxShadow: selected ? `0 0 14px ${color}88` : `0 0 0 rgba(0,0,0,0)`,
+      }}
+    />
+  );
+}
+
+function SwatchAuto({
+  selected,
+  autoColor,
+  onClick,
+}: {
+  selected: boolean;
+  autoColor: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Auto color"
+      className={`w-7 h-7 rounded-full transition-all duration-200 ease-ios-spring relative flex items-center justify-center text-[9px] font-bold tracking-wider active:scale-90 ${
+        selected
+          ? "ring-2 ring-white ring-offset-2 ring-offset-[#0A0A0B]"
+          : "hover:scale-110"
+      }`}
+      style={{
+        background: `conic-gradient(from 0deg, hsl(0,70%,60%), hsl(60,70%,60%), hsl(120,70%,60%), hsl(180,70%,60%), hsl(240,70%,60%), hsl(300,70%,60%), hsl(0,70%,60%))`,
+      }}
+    >
+      <span
+        className="bg-[#0A0A0B] rounded-full w-4 h-4 flex items-center justify-center text-white"
+        style={{ fontSize: "8px" }}
+      >
+        A
+      </span>
+    </button>
   );
 }

@@ -13,7 +13,7 @@ import {
   snapshotsToSales,
   weeklySeries,
 } from "@/lib/analytics";
-import { colorForUsername } from "@/lib/colors";
+import { colorForStore } from "@/lib/colors";
 
 type Range = "7d" | "30d" | "12w" | "12m";
 
@@ -43,7 +43,7 @@ export default function StatsView({
   const selectedStore = stores.find((s) => s.id === storeId);
   const currency = selectedStore?.currency ?? "USD";
   const avg = selectedStore?.avg_price_minor ?? avgAcrossStores(stores);
-  const accent = selectedStore ? colorForUsername(selectedStore.username) : null;
+  const accent = selectedStore ? colorForStore(selectedStore) : null;
 
   const series = useMemo(() => {
     if (range === "7d") return dailySeries(sales, 7);

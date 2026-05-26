@@ -1,8 +1,6 @@
-// Deterministic per-shop color. Same username always gets the same hue,
-// so the dot/tint stays stable across the dashboard.
-//
-// Avoids hues that clash with the money-green accent (140–170) by
-// rotating around them.
+// Per-shop color. If the user picked one explicitly we use it. Otherwise
+// we derive a stable hue from the username, avoiding the money-green
+// band (130–175°) so the per-store dot doesn't clash with the $ accent.
 
 const SKIP_LO = 130;
 const SKIP_HI = 175;
@@ -26,10 +24,22 @@ export function colorForUsername(username: string, alpha = 1): string {
     : `hsl(${hue}, 72%, 64%)`;
 }
 
-export function softTintForUsername(username: string): string {
-  return colorForUsername(username, 0.16);
+export function colorForStore(
+  store: { username: string; color?: string | null },
+): string {
+  return store.color || colorForUsername(store.username);
 }
 
-export function rgbaFromHueComponents(hue: number, alpha = 1): string {
-  return `hsla(${hue}, 72%, 64%, ${alpha})`;
-}
+// Curated palette for the color picker — vibrant on dark, none near
+// money-green so the per-store tint stays distinct from the $ accent.
+export const STORE_PALETTE = [
+  "#FF6B6B", // red
+  "#FF9F43", // orange
+  "#FFC93C", // amber
+  "#5B8DEF", // blue
+  "#26C6DA", // teal
+  "#8B5CF6", // purple
+  "#EC4899", // pink
+  "#FF8AA1", // rose
+  "#A78BFA", // lavender
+];

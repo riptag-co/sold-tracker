@@ -15,7 +15,7 @@ export default async function Home() {
     await Promise.all([
       supabase
         .from("stores")
-        .select("id, username, display_name, avg_price_minor, currency")
+        .select("id, username, display_name, avg_price_minor, currency, color")
         .order("username"),
       supabase
         .from("snapshots")

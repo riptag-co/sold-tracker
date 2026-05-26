@@ -18,7 +18,7 @@ import {
   paceProjection,
   snapshotsToSales,
 } from "@/lib/analytics";
-import { colorForUsername } from "@/lib/colors";
+import { colorForStore } from "@/lib/colors";
 
 const LONG_PRESS_MS = 500;
 
@@ -180,7 +180,7 @@ function StoreRow({
   const moved = useRef(false);
   const label = store.display_name || store.username;
   const revToday = stats.todayRevenue ?? 0;
-  const tint = colorForUsername(store.username);
+  const tint = colorForStore(store);
 
   function startPress() {
     moved.current = false;

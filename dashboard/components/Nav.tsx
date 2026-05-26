@@ -34,6 +34,13 @@ function statusLabel(s: LiveStatus): string {
   }
 }
 
+const DOT_BY_STATUS: Record<LiveStatus, string> = {
+  live: "bg-money shadow-[0_0_12px_rgba(52,211,153,0.7)] animate-live-pulse",
+  stale: "bg-amber-300/90",
+  offline: "bg-red-400/80",
+  none: "bg-white/15",
+};
+
 export default function Nav({
   latestSnapshotT,
 }: {
@@ -69,15 +76,6 @@ export default function Nav({
     return () => window.removeEventListener("resize", measure);
   }, [activeIdx]);
 
-  const dotClass =
-    status === "live"
-      ? "bg-money shadow-[0_0_10px_rgba(52,211,153,0.6)] animate-live-pulse"
-      : status === "stale"
-        ? "bg-amber-300/90"
-        : status === "offline"
-          ? "bg-red-400/80"
-          : "bg-white/15";
-
   return (
     <header className="px-4 pt-7 pb-4 max-w-2xl mx-auto animate-fade-in">
       <div className="flex justify-center mb-6">
@@ -90,13 +88,10 @@ export default function Nav({
             TRACKER
           </span>
           <span
-            className={`ml-2 w-1.5 h-1.5 rounded-full ${dotClass}`}
+            className={`ml-2 w-2 h-2 rounded-full ${DOT_BY_STATUS[status]}`}
             aria-label={statusLabel(status)}
             title={statusLabel(status)}
           />
-          <span className="text-[10px] uppercase tracking-[0.18em] text-text-3 ml-0.5 font-semibold">
-            {statusLabel(status)}
-          </span>
         </Link>
       </div>
 

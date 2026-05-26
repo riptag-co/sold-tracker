@@ -9,7 +9,7 @@ import {
   type Store,
 } from "@/lib/stats";
 import { snapshotsToSales, sparkline, isOnFire } from "@/lib/analytics";
-import { colorForUsername } from "@/lib/colors";
+import { colorForStore, colorForUsername } from "@/lib/colors";
 import Flame from "./Flame";
 
 export default function StoreSheet({
@@ -38,7 +38,7 @@ export default function StoreSheet({
   const sales = snapshotsToSales(snapshots);
   const spark = sparkline(sales, 30);
   const fire = isOnFire(sales);
-  const color = colorForUsername(store.username);
+  const color = colorForStore(store);
   const label = store.display_name || store.username;
 
   return (

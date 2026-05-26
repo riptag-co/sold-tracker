@@ -10,7 +10,7 @@ export default async function GoalsPage() {
     await Promise.all([
       supabase
         .from("stores")
-        .select("id, username, display_name, avg_price_minor, currency"),
+        .select("id, username, display_name, avg_price_minor, currency, color"),
       supabase
         .from("snapshots")
         .select("store_id, sold_count, taken_at")

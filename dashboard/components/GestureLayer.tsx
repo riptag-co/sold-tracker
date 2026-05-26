@@ -29,8 +29,21 @@ export default function GestureLayer() {
   const draggingSwipeRef = useRef(false);
 
   useEffect(() => {
+    function targetIsInteractive(target: EventTarget | null) {
+      if (!(target instanceof Element)) return false;
+      return !!target.closest(
+        'input, textarea, select, button, a, label, [role="button"], [role="listbox"], [role="option"], [data-no-gesture]',
+      );
+    }
+
     function onStart(e: TouchEvent) {
       if (e.touches.length !== 1) return;
+      // Don't capture gestures that start on interactive controls —
+      // tapping a dropdown shouldn't trigger swipe-navigation.
+      if (targetIsInteractive(e.target)) {
+        startRef.current = null;
+        return;
+      }
       const t = e.touches[0];
       startRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
       draggingPullRef.current = false;

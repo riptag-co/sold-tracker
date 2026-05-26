@@ -13,6 +13,7 @@ export type Store = {
   display_name: string | null;
   avg_price_minor: number | null;
   currency: string;
+  color: string | null;
 };
 
 export type StoreError = {

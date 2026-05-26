@@ -7,7 +7,7 @@ export default async function StoresPage() {
   const supabase = await createClient();
   const { data: stores } = await supabase
     .from("stores")
-    .select("id, username, display_name, avg_price_minor, currency")
+    .select("id, username, display_name, avg_price_minor, currency, color")
     .order("username");
 
   return (
