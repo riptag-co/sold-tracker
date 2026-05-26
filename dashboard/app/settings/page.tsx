@@ -17,7 +17,7 @@ export default async function SettingsPage() {
 
   return (
     <main className="px-4 pb-20 max-w-2xl mx-auto space-y-3">
-      <h1 className="text-2xl font-bold mt-4 mb-1 tracking-tight">Settings</h1>
+      <h1 className="text-2xl font-bold mt-1 sm:mt-4 mb-1 tracking-tight">Settings</h1>
 
       <section className="glass p-6 animate-fade-up">
         <h2 className="text-[16px] font-semibold mb-1 tracking-tight">

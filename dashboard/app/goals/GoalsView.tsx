@@ -119,7 +119,7 @@ export default function GoalsView({
 
   return (
     <>
-      <h1 className="text-[26px] font-bold mt-5 mb-5 tracking-tight">Goals</h1>
+      <h1 className="text-[26px] font-bold mt-1 sm:mt-3 mb-3 tracking-tight">Goals</h1>
 
       {/* Featured ring */}
       {primary ? (

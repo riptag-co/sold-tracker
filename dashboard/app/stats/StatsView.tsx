@@ -178,7 +178,7 @@ export default function StatsView({
 
   return (
     <>
-      <h1 className="text-[24px] sm:text-[26px] font-bold mt-3 mb-3 tracking-tight">Stats</h1>
+      <h1 className="text-[24px] sm:text-[26px] font-bold mt-1 sm:mt-3 mb-3 tracking-tight">Stats</h1>
 
       <div className="flex gap-2 mb-3 flex-wrap items-center animate-fade-up">
         <Dropdown value={storeId} options={storeOptions} onChange={setStoreId} />
