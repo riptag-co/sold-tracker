@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Sold Tracker",
+  "version": "2.0.0",
+  "description": "Tracks daily, weekly, and monthly sold counts across multiple Depop shops. Syncs to a cloud dashboard so you can view stats from your phone.",
+  "permissions": ["storage", "alarms"],
+  "host_permissions": [
+    "https://www.depop.com/*",
+    "https://*.supabase.co/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Sold Tracker"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  }
+}

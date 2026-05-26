@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+
+html, body { background: #000; color: #fff; }
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+}
+
+.ambient {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60% 40% at 50% 0%, rgba(255,255,255,0.09), transparent 70%),
+    radial-gradient(40% 35% at 90% 100%, rgba(255,255,255,0.045), transparent 70%),
+    radial-gradient(40% 35% at 0% 80%, rgba(255,255,255,0.03), transparent 70%),
+    #000;
+}
+
+.glass {
+  background: rgba(255,255,255,0.045);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  position: relative;
+  overflow: hidden;
+}
+.glass::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+}
+
+.num { font-variant-numeric: tabular-nums; letter-spacing: -0.035em; }
+.lbl {
+  font-size: 9px; font-weight: 500; letter-spacing: 0.16em;
+  text-transform: uppercase; color: rgba(255,255,255,0.38);
+}
+
+button.pill {
+  background: #fff; color: #000;
+  border-radius: 9999px; padding: 9px 18px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: pointer;
+}
+button.pill:hover { background: rgba(255,255,255,0.85); }
+button.pill:disabled { background: rgba(255,255,255,0.3); cursor: wait; }
+
+button.ghost {
+  background: transparent; color: rgba(255,255,255,0.62);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 9999px; padding: 7px 14px;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  cursor: pointer;
+}
+button.ghost:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+
+input.field, select.field, textarea.field {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 10px;
+  color: #fff;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+}
+input.field:focus, select.field:focus, textarea.field:focus {
+  border-color: rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.06);
+}

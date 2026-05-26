@@ -1,0 +1,12 @@
+# Supabase CLI config for `supabase functions deploy`.
+# project_id is filled in when you run `supabase link --project-ref <ref>`.
+project_id = "egvydbpexshlicbqogxr"
+
+[functions.pair]
+verify_jwt = false  # called by extension without a Supabase session
+
+[functions.ingest]
+verify_jwt = false  # auth via device-token bearer
+
+[functions.dashboard-data]
+verify_jwt = false  # auth via device-token bearer

@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Sold Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #000;
+        --text: #fff;
+        --text-2: rgba(255, 255, 255, 0.62);
+        --text-3: rgba(255, 255, 255, 0.38);
+        --text-4: rgba(255, 255, 255, 0.22);
+        --line: rgba(255, 255, 255, 0.08);
+        --line-strong: rgba(255, 255, 255, 0.14);
+        --glass: rgba(255, 255, 255, 0.045);
+        --radius-lg: 20px;
+        --radius-md: 12px;
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { margin: 0; }
+      body {
+        width: 380px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display",
+          "Segoe UI", system-ui, sans-serif;
+        font-feature-settings: "ss01", "cv11";
+        -webkit-font-smoothing: antialiased;
+        position: relative;
+        overflow-x: hidden;
+      }
+
+      .ambient {
+        position: fixed; inset: 0; z-index: -1; pointer-events: none;
+        background:
+          radial-gradient(60% 40% at 50% 0%, rgba(255,255,255,0.09), transparent 70%),
+          radial-gradient(40% 35% at 90% 100%, rgba(255,255,255,0.045), transparent 70%),
+          radial-gradient(40% 35% at 0% 80%, rgba(255,255,255,0.03), transparent 70%),
+          #000;
+      }
+      .grain {
+        position: fixed; inset: 0; z-index: -1; pointer-events: none;
+        opacity: 0.04; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      }
+
+      main { padding: 18px 16px 18px; }
+
+      header.app-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 2px 16px;
+      }
+      .wordmark {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--text-2);
+      }
+      .wordmark .dot {
+        display: inline-block;
+        width: 4px; height: 4px;
+        border-radius: 50%;
+        background: var(--text);
+        margin: 0 8px 1px;
+        vertical-align: middle;
+      }
+      .header-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .icon-btn {
+        background: transparent;
+        border: 1px solid var(--line-strong);
+        color: var(--text-2);
+        width: 26px; height: 26px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        transition: color 0.15s, border-color 0.15s, background 0.15s, transform 0.4s;
+      }
+      .icon-btn:hover {
+        color: var(--text);
+        border-color: rgba(255, 255, 255, 0.32);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .icon-btn svg { width: 13px; height: 13px; }
+      .icon-btn.spinning { animation: spin 0.9s linear; }
+      @keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        font-weight: 500;
+      }
+      .status .pulse {
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: #fff;
+        animation: pulse 2.2s ease-out infinite;
+      }
+      .status.error .pulse { background: rgba(255,255,255,0.35); animation: none; }
+      @keyframes pulse {
+        0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.45); }
+        70%  { box-shadow: 0 0 0 7px rgba(255,255,255,0); }
+        100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+      }
+
+      .glass {
+        position: relative;
+        background: var(--glass);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        backdrop-filter: blur(24px) saturate(140%);
+        -webkit-backdrop-filter: blur(24px) saturate(140%);
+        overflow: hidden;
+        animation: rise 0.35s ease-out both;
+      }
+      .glass::before {
+        content: "";
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+      }
+      @keyframes rise {
+        from { opacity: 0; transform: translateY(4px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      .hero { padding: 18px 18px 16px; margin-bottom: 10px; }
+      .hero-label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        margin-bottom: 14px;
+      }
+      .hero-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+      }
+      .hero-stats .stat { padding: 0 0 2px; }
+      .hero-stats .stat + .stat { border-left: 1px solid var(--line); padding-left: 12px; }
+      .num {
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: -0.035em;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .lbl {
+        display: block;
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        margin-top: 7px;
+      }
+      .hero-foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+        font-size: 11px;
+        color: var(--text-3);
+      }
+      .num-inline {
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+        font-weight: 500;
+      }
+
+      .section-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        margin: 18px 4px 8px;
+      }
+
+      .stores { display: grid; gap: 8px; }
+      .store { padding: 14px 16px 12px; }
+      .store-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .store-name {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        min-width: 0;
+      }
+      .store-name span.label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 200px;
+      }
+      .freshness {
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+        flex-shrink: 0;
+      }
+      .freshness.stale { background: rgba(255,255,255,0.4); box-shadow: none; }
+      .freshness.dead  { background: rgba(255,255,255,0.18); box-shadow: none; }
+      .freshness.err   { background: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.35); }
+
+      .store-open {
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        text-decoration: none;
+        font-weight: 500;
+        padding: 3px 9px;
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        flex-shrink: 0;
+      }
+      .store-open:hover {
+        color: var(--text);
+        border-color: rgba(255,255,255,0.32);
+        background: rgba(255,255,255,0.05);
+      }
+
+      .store-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 5px;
+      }
+      .store-stats .stat {
+        background: rgba(255,255,255,0.025);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-md);
+        padding: 10px 10px 9px;
+      }
+      .store-stats .num { font-size: 18px; }
+      .store-stats .lbl { font-size: 8.5px; margin-top: 6px; }
+
+      .store-foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+        font-size: 10px;
+        color: var(--text-3);
+      }
+      .store-foot .num-inline { color: var(--text-2); }
+      .store-err {
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 10.5px;
+        color: var(--text-2);
+        line-height: 1.45;
+      }
+
+      .empty {
+        padding: 28px 22px;
+        text-align: center;
+        color: var(--text-2);
+        font-size: 12.5px;
+        line-height: 1.55;
+      }
+      .empty .title {
+        color: var(--text);
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+      .empty button {
+        margin-top: 14px;
+        background: #fff;
+        color: #000;
+        border: none;
+        border-radius: 999px;
+        padding: 9px 18px;
+        font-family: inherit;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .empty button:hover { background: rgba(255,255,255,0.85); }
+
+      .skeleton {
+        background: linear-gradient(
+          90deg,
+          rgba(255,255,255,0.04) 0%,
+          rgba(255,255,255,0.09) 50%,
+          rgba(255,255,255,0.04) 100%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 1.8s linear infinite;
+        border-radius: 6px;
+        color: transparent;
+      }
+      @keyframes shimmer {
+        0%   { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="ambient"></div>
+    <div class="grain"></div>
+
+    <main>
+      <header class="app-header">
+        <div class="wordmark">SOLD<span class="dot"></span>TRACKER</div>
+        <div class="header-actions">
+          <div class="status" id="status">
+            <span class="pulse"></span><span id="status-text">SYNCING</span>
+          </div>
+          <button class="icon-btn" id="refresh-btn" title="Refresh now">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12a9 9 0 1 1-3-6.7L21 8"/>
+              <path d="M21 3v5h-5"/>
+            </svg>
+          </button>
+          <button class="icon-btn" id="settings-btn" title="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.55-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9c.36.6.96.98 1.55 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.55 1z"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <section id="content"></section>
+    </main>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
