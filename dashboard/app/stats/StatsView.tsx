@@ -44,7 +44,7 @@ export default function StatsView({
 }) {
   const [storeId, setStoreId] = useState<string>("all");
   const [range, setRange] = useState<Range>("1m");
-  const [chartKind, setChartKind] = useState<ChartKind>("bar");
+  const [chartKind, setChartKind] = useState<ChartKind>("line");
   const [selectedBar, setSelectedBar] = useState<number | null>(null);
 
   const snapsByStore = useMemo(() => groupSnapshots(snapshots), [snapshots]);
