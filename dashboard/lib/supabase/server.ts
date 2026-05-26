@@ -1,7 +1,7 @@
 // Server-side Supabase client for use in Server Components and Route
 // Handlers. Wires Next.js cookies() into @supabase/ssr so the session
 // is read/written via HTTP-only cookies.
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
@@ -13,7 +13,7 @@ export async function createClient() {
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: (toSet) => {
+        setAll: (toSet: { name: string; value: string; options: CookieOptions }[]) => {
           try {
             for (const { name, value, options } of toSet) {
               cookieStore.set(name, value, options);

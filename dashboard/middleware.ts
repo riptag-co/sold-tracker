@@ -1,7 +1,7 @@
 // Refresh the Supabase session cookie on every navigation so server
 // components always see a fresh user. Without this, magic-link logins
 // would land on a stale logged-out render.
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
@@ -13,7 +13,7 @@ export async function middleware(req: NextRequest) {
     {
       cookies: {
         getAll: () => req.cookies.getAll(),
-        setAll: (toSet) => {
+        setAll: (toSet: { name: string; value: string; options: CookieOptions }[]) => {
           res = NextResponse.next({ request: req });
           for (const { name, value, options } of toSet) {
             res.cookies.set(name, value, options);
