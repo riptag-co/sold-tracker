@@ -233,11 +233,9 @@ function StoreRow({
             {label}
             {onFire && <Flame size={11} />}
           </div>
-          {label !== store.username && (
-            <div className="text-[12px] text-text-3 truncate mt-0.5">
-              @{store.username}
-            </div>
-          )}
+          <div className="text-[12px] text-text-3 truncate mt-0.5">
+            depop.com/{store.username}
+          </div>
         </div>
       </div>
       <div className="text-right flex-shrink-0">
