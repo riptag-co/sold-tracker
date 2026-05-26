@@ -43,7 +43,7 @@ export default function StatsView({
   snapshots: Snapshot[];
 }) {
   const [storeId, setStoreId] = useState<string>("all");
-  const [range, setRange] = useState<Range>("30d");
+  const [range, setRange] = useState<Range>("1m");
   const [chartKind, setChartKind] = useState<ChartKind>("bar");
   const [selectedBar, setSelectedBar] = useState<number | null>(null);
 
