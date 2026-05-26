@@ -152,8 +152,12 @@ export default function GestureLayer() {
         <svg
           width="14"
           height="14"
-          viewBox="0 0 14 14"
+          viewBox="0 0 24 24"
           fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           className={refreshing ? "animate-spin" : ""}
           style={{
             transform: refreshing
@@ -162,14 +166,8 @@ export default function GestureLayer() {
             transition: "transform 0.15s",
           }}
         >
-          <path
-            d="M2 7a5 5 0 1 1 1.5 3.6"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            fill="none"
-          />
-          <path d="M2 11V8h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+          <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
+          <polyline points="21 3 21 8 16 8" />
         </svg>
         {refreshing ? "Refreshing" : triggered ? "Release to refresh" : "Pull to refresh"}
       </div>
