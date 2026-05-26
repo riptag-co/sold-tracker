@@ -63,7 +63,7 @@ export default function StatsView({
     { value: "all", label: "All stores" },
     ...stores.map((s) => ({
       value: s.id,
-      label: s.display_name || s.username,
+      label: s.username,
     })),
   ];
 

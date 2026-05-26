@@ -178,7 +178,9 @@ function StoreRow({
 }) {
   const timer = useRef<number | null>(null);
   const moved = useRef(false);
-  const label = store.display_name || store.username;
+  // Always use the username — display_name is a legacy column we no
+  // longer surface anywhere.
+  const label = store.username;
   const revToday = stats.todayRevenue ?? 0;
   const tint = colorForStore(store);
 

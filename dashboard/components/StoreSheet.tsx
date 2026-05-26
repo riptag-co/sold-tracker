@@ -39,7 +39,7 @@ export default function StoreSheet({
   const spark = sparkline(sales, 30);
   const fire = isOnFire(sales);
   const color = colorForStore(store);
-  const label = store.display_name || store.username;
+  const label = store.username;
 
   return (
     <div className="fixed inset-0 z-50">
