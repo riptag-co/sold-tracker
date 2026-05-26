@@ -515,12 +515,23 @@ function LineChart({
   );
 }
 
-// Catmull-Rom → cubic Bezier. Renders a noticeably smoother curve than
-// the quadratic-midpoint approximation. tension ∈ [0, 1]; lower = looser.
+// Catmull-Rom → cubic Bezier with control points clamped to the data
+// range. Without the clamp, sharp transitions (e.g. 0 → 0 → spike →
+// 0 → 0) cause the curve to overshoot below the baseline. The clamp
+// keeps the curve within the actual min/max Y of the data so it can
+// never render below "zero sales".
 function smoothPath(points: readonly (readonly [number, number])[]): string {
   if (points.length === 0) return "";
   if (points.length === 1) return `M ${points[0][0]},${points[0][1]}`;
   const tension = 0.22;
+  // SVG Y is inverted (down is larger). The "baseline" is the largest Y.
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const p of points) {
+    if (p[1] < minY) minY = p[1];
+    if (p[1] > maxY) maxY = p[1];
+  }
+  const clamp = (y: number) => Math.max(minY, Math.min(maxY, y));
   let d = `M ${points[0][0]},${points[0][1]}`;
   for (let i = 0; i < points.length - 1; i++) {
     const p0 = points[i - 1] ?? points[i];
@@ -528,9 +539,9 @@ function smoothPath(points: readonly (readonly [number, number])[]): string {
     const p2 = points[i + 1];
     const p3 = points[i + 2] ?? p2;
     const cp1x = p1[0] + (p2[0] - p0[0]) * tension;
-    const cp1y = p1[1] + (p2[1] - p0[1]) * tension;
+    const cp1y = clamp(p1[1] + (p2[1] - p0[1]) * tension);
     const cp2x = p2[0] - (p3[0] - p1[0]) * tension;
-    const cp2y = p2[1] - (p3[1] - p1[1]) * tension;
+    const cp2y = clamp(p2[1] - (p3[1] - p1[1]) * tension);
     d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2[0]},${p2[1]}`;
   }
   return d;

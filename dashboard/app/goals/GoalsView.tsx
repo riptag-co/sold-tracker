@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AnimatedNumber from "@/components/AnimatedNumber";
@@ -40,6 +40,23 @@ export default function GoalsView({
   const router = useRouter();
   const supabase = createClient();
   const snapsByStore = useMemo(() => groupSnapshots(snapshots), [snapshots]);
+
+  // Two-tap delete: first tap arms, second tap within 3s commits.
+  const [armedId, setArmedId] = useState<string | null>(null);
+  const armedTimer = useRef<number | null>(null);
+  function arm(id: string, onConfirmed: () => void) {
+    if (armedId === id) {
+      if (armedTimer.current) window.clearTimeout(armedTimer.current);
+      setArmedId(null);
+      onConfirmed();
+      return;
+    }
+    setArmedId(id);
+    if (armedTimer.current) window.clearTimeout(armedTimer.current);
+    armedTimer.current = window.setTimeout(() => {
+      setArmedId((cur) => (cur === id ? null : cur));
+    }, 3000);
+  }
 
   const [period, setPeriod] = useState<Period>("day");
   const [metric, setMetric] = useState<Metric>("sales");
@@ -107,20 +124,34 @@ export default function GoalsView({
       {/* Featured ring */}
       {primary ? (
         <section className="glass p-7 sm:p-10 mb-3 text-center animate-fade-up relative">
-          <button
-            onClick={() => removeGoal(primary.goal.id)}
-            aria-label="Remove goal"
-            className="absolute top-3 right-3 w-9 h-9 rounded-full inline-flex items-center justify-center transition-colors active:scale-90"
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "rgba(255,255,255,0.55)",
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-          </button>
+          {(() => {
+            const id = primary.goal.id;
+            const armed = armedId === id;
+            return (
+              <button
+                onClick={() => arm(id, () => removeGoal(id))}
+                aria-label={armed ? "Tap again to confirm delete" : "Remove goal"}
+                title={armed ? "Tap again to confirm" : "Remove goal"}
+                className={`absolute top-3 right-3 rounded-full inline-flex items-center justify-center transition-all active:scale-90 ${
+                  armed ? "h-9 px-3 gap-1.5" : "w-9 h-9"
+                }`}
+                style={{
+                  background: armed ? "rgba(248,113,113,0.18)" : "rgba(255,255,255,0.05)",
+                  border: armed
+                    ? "1px solid rgba(248,113,113,0.45)"
+                    : "1px solid rgba(255,255,255,0.12)",
+                  color: armed ? "#FCA5A5" : "rgba(255,255,255,0.55)",
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+                {armed && (
+                  <span className="text-[11px] font-semibold tracking-wide">Confirm</span>
+                )}
+              </button>
+            );
+          })()}
           <FeaturedGoal goal={primary.goal} value={primary.value} stores={stores} />
         </section>
       ) : (
@@ -150,7 +181,8 @@ export default function GoalsView({
                 goal={goal}
                 value={value}
                 stores={stores}
-                onRemove={() => removeGoal(goal.id)}
+                armed={armedId === goal.id}
+                onRemove={() => arm(goal.id, () => removeGoal(goal.id))}
               />
             ))}
           </div>
@@ -296,11 +328,13 @@ function LinearGoalRow({
   goal,
   value,
   stores,
+  armed,
   onRemove,
 }: {
   goal: Goal;
   value: number;
   stores: Store[];
+  armed: boolean;
   onRemove: () => void;
 }) {
   const percent = goal.target > 0 ? value / goal.target : 0;
@@ -335,9 +369,11 @@ function LinearGoalRow({
         </div>
         <button
           onClick={onRemove}
-          className="text-[11px] text-text-3 hover:text-white transition-colors flex-shrink-0"
+          className={`text-[11px] transition-colors flex-shrink-0 font-semibold ${
+            armed ? "text-red-300" : "text-text-3 hover:text-white"
+          }`}
         >
-          Remove
+          {armed ? "Tap to confirm" : "Remove"}
         </button>
       </div>
       <LinearProgress percent={percent} color={tint} />
