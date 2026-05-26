@@ -45,9 +45,10 @@ export default {
         "line-strong": "rgba(255,255,255,0.12)",
       },
       animation: {
-        "fade-up": "fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "fade-up": "fadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both",
         "fade-in": "fadeIn 0.4s ease-out both",
         "scale-in": "scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "page-in": "pageIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both",
         "live-pulse": "livePulse 2.2s ease-out infinite",
         shimmer: "shimmer 2s linear infinite",
       },
@@ -63,6 +64,10 @@ export default {
         scaleIn: {
           from: { opacity: "0", transform: "scale(0.96)" },
           to: { opacity: "1", transform: "scale(1)" },
+        },
+        pageIn: {
+          from: { opacity: "0", transform: "translateX(12px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
         },
         livePulse: {
           "0%, 100%": { opacity: "1", transform: "scale(1)" },
