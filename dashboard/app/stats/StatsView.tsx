@@ -245,7 +245,7 @@ export default function StatsView({
               <CompareBarChart
                 stores={stores}
                 perStoreSeries={perStoreSeries}
-                days={range === "7d" ? 7 : range === "30d" ? 30 : range === "12w" ? 12 : 12}
+                days={range === "7d" ? 7 : range === "1m" ? 30 : 12}
               />
             ) : (
               <CompareLineChart
