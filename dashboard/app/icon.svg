@@ -7,8 +7,14 @@
     </linearGradient>
   </defs>
   <rect width="24" height="24" rx="5.4" fill="url(#g)"/>
-  <g stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <line x1="12" y1="3" x2="12" y2="21"/>
-    <path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-  </g>
+  <text
+    x="12"
+    y="18.4"
+    text-anchor="middle"
+    font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Rounded', 'Helvetica Neue', system-ui, sans-serif"
+    font-size="19"
+    font-weight="900"
+    fill="#ffffff"
+    style="letter-spacing:-0.4px"
+  >$</text>
 </svg>

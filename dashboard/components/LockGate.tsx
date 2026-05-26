@@ -4,40 +4,38 @@ import { useEffect, useState } from "react";
 import LockScreen from "./LockScreen";
 import { isDeviceTrusted, trustDevice } from "@/lib/lock";
 
-// Wraps the app. If a PIN is set on the server and this device isn't
-// in its 30-day trust window, render the lock screen. Otherwise pass
-// children through. Note: this is a UI gate, not real security — the
-// Supabase anon API still serves data to anyone with the key.
+// Wraps the app. If any PIN is set on the server and this device
+// isn't in its 30-day trust window, render the lock screen. Otherwise
+// pass children through. Note: this is a UI gate, not real security.
 
 type State = "checking" | "locked" | "unlocked";
 
 export default function LockGate({
-  pinHash,
+  pinHashes,
   children,
 }: {
-  pinHash: string | null;
+  pinHashes: string[] | null;
   children: React.ReactNode;
 }) {
-  const [state, setState] = useState<State>(pinHash ? "checking" : "unlocked");
+  const hasPin = !!(pinHashes && pinHashes.length > 0);
+  const [state, setState] = useState<State>(hasPin ? "checking" : "unlocked");
 
   useEffect(() => {
-    if (!pinHash) {
+    if (!hasPin) {
       setState("unlocked");
       return;
     }
     setState(isDeviceTrusted() ? "unlocked" : "locked");
-  }, [pinHash]);
+  }, [hasPin]);
 
   if (state === "checking") {
-    // Brief blank to avoid flashing the dashboard before the trust
-    // check resolves on the client.
     return <div className="fixed inset-0 bg-ink z-[99]" />;
   }
 
-  if (state === "locked" && pinHash) {
+  if (state === "locked" && pinHashes) {
     return (
       <LockScreen
-        pinHash={pinHash}
+        pinHashes={pinHashes}
         onSuccess={() => {
           trustDevice();
           setState("unlocked");

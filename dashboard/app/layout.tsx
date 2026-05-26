@@ -34,16 +34,30 @@ export default async function RootLayout({
       .order("taken_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    supabase.from("control").select("pin_hash").eq("id", 1).maybeSingle(),
+    supabase
+      .from("control")
+      .select("pin_hash, pin_hashes")
+      .eq("id", 1)
+      .maybeSingle(),
   ]);
   const latestT = latest?.taken_at ? Date.parse(latest.taken_at) : null;
-  const pinHash = (control?.pin_hash as string | null) ?? null;
+
+  // Prefer the array column; fall back to the singular column for
+  // databases that haven't run migration 0009 yet.
+  const fromArray = (control?.pin_hashes as string[] | null) ?? null;
+  const fromScalar = (control?.pin_hash as string | null) ?? null;
+  const pinHashes: string[] | null =
+    fromArray && fromArray.length > 0
+      ? fromArray
+      : fromScalar
+        ? [fromScalar]
+        : null;
 
   return (
     <html lang="en" className="antialiased">
       <body>
         <div className="ambient" />
-        <LockGate pinHash={pinHash}>
+        <LockGate pinHashes={pinHashes}>
           <Nav latestSnapshotT={latestT} />
           <GestureLayer />
           {children}

@@ -22,18 +22,21 @@ export default function PinPanel({ hasPin }: { hasPin: boolean }) {
     setBusy(true);
     setError(null);
     const hash = await sha256Hex(pin);
+    // Keep both columns in sync so older deploys / migration 0009 not
+    // yet run both work.
     const { data, error } = await supabase
       .from("control")
-      .upsert({ id: 1, pin_hash: hash })
-      .select("pin_hash")
+      .upsert({ id: 1, pin_hash: hash, pin_hashes: [hash] })
+      .select("pin_hashes, pin_hash")
       .single();
     setBusy(false);
     if (error) {
       setError(error.message);
       return;
     }
-    if ((data?.pin_hash ?? null) !== hash) {
-      setError("Save didn't persist. Verify migration 0008 ran.");
+    const stored: string[] = (data?.pin_hashes as string[] | null) ?? (data?.pin_hash ? [data.pin_hash] : []);
+    if (!stored.includes(hash)) {
+      setError("Save didn't persist. Verify migrations 0008/0009 ran.");
       return;
     }
     setFlow(null);
@@ -45,8 +48,8 @@ export default function PinPanel({ hasPin }: { hasPin: boolean }) {
     setError(null);
     const { error } = await supabase
       .from("control")
-      .upsert({ id: 1, pin_hash: null })
-      .select("pin_hash")
+      .upsert({ id: 1, pin_hash: null, pin_hashes: null })
+      .select("pin_hash, pin_hashes")
       .single();
     setBusy(false);
     if (error) {

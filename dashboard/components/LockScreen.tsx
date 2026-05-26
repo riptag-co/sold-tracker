@@ -6,14 +6,14 @@ import { sha256Hex } from "@/lib/lock";
 const PIN_LENGTH = 4;
 
 export default function LockScreen({
-  pinHash,
+  pinHashes,
   title = "Enter Passcode",
   onSuccess,
-  // Used by the "Set PIN" flow — no hash to compare, just collect digits.
+  // Used by the "Set PIN" flow — no hashes to compare, just collect digits.
   collectMode = false,
   onCollect,
 }: {
-  pinHash?: string;
+  pinHashes?: string[];
   title?: string;
   onSuccess?: () => void;
   collectMode?: boolean;
@@ -33,12 +33,12 @@ export default function LockScreen({
       }, 120);
       return () => window.clearTimeout(t);
     }
-    if (!pinHash) return;
+    if (!pinHashes || pinHashes.length === 0) return;
     let cancelled = false;
     (async () => {
       const hash = await sha256Hex(entered);
       if (cancelled) return;
-      if (hash === pinHash) {
+      if (pinHashes.includes(hash)) {
         if ("vibrate" in navigator) navigator.vibrate(8);
         onSuccess?.();
       } else {
@@ -53,7 +53,7 @@ export default function LockScreen({
     return () => {
       cancelled = true;
     };
-  }, [entered, pinHash, collectMode, onCollect, onSuccess]);
+  }, [entered, pinHashes, collectMode, onCollect, onSuccess]);
 
   function press(d: string) {
     if (entered.length >= PIN_LENGTH) return;
