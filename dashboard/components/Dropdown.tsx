@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export type DropdownOption<T extends string> = { value: T; label: string };
 
@@ -16,32 +17,66 @@ export default function Dropdown<T extends string>({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; minWidth: number } | null>(null);
+
+  function recomputePosition() {
+    const t = triggerRef.current;
+    if (!t) return;
+    const r = t.getBoundingClientRect();
+    setPos({
+      top: r.bottom + 8 + window.scrollY,
+      left: r.left + window.scrollX,
+      minWidth: Math.max(200, r.width),
+    });
+  }
+
+  function toggle() {
+    if (!open) {
+      recomputePosition();
+    }
+    setOpen((v) => !v);
+  }
 
   useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      const t = triggerRef.current;
+      const p = panelRef.current;
+      if (
+        t && !t.contains(e.target as Node) &&
+        p && !p.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
-    document.addEventListener("mousedown", onDoc);
+    function onScrollOrResize() {
+      recomputePosition();
+    }
+    document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onScrollOrResize);
+    window.addEventListener("scroll", onScrollOrResize, true);
     return () => {
-      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", onScrollOrResize, true);
     };
-  }, []);
+  }, [open]);
 
   const current = options.find((o) => o.value === value);
 
   return (
-    <div ref={wrapRef} className={`relative inline-block ${className}`}>
+    <div className={`inline-block ${className}`}>
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         style={{
           background: open ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
           border: "1px solid rgba(255,255,255,0.14)",
@@ -66,100 +101,105 @@ export default function Dropdown<T extends string>({
         </svg>
       </button>
 
-      {open && (
-        <div
-          role="listbox"
-          className="absolute top-full left-0 mt-2 animate-dropdown-in origin-top-left"
-          style={{
-            zIndex: 9999,
-            minWidth: 200,
-          }}
-        >
+      {open && pos && typeof document !== "undefined" &&
+        createPortal(
           <div
+            ref={panelRef}
+            role="listbox"
+            className="animate-dropdown-in origin-top-left"
             style={{
-              background: "#1B1B22",
-              border: "1px solid rgba(255,255,255,0.18)",
-              borderRadius: 16,
-              padding: "4px 0",
-              maxHeight: 260,
-              overflowY: "auto",
-              boxShadow:
-                "0 24px 60px -12px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.05) inset",
-              opacity: 1,
+              position: "absolute",
+              top: pos.top,
+              left: pos.left,
+              minWidth: pos.minWidth,
+              zIndex: 9999,
             }}
           >
-            {options.map((o) => {
-              const selected = o.value === value;
-              return (
-                <button
-                  key={o.value}
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  onClick={() => {
-                    onChange(o.value);
-                    setOpen(false);
-                  }}
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 16px",
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: "#ffffff",
-                    background: selected
-                      ? "rgba(255,255,255,0.08)"
-                      : "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    transition: "background 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!selected) {
-                      (e.currentTarget as HTMLElement).style.background =
-                        "rgba(255,255,255,0.05)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!selected) {
-                      (e.currentTarget as HTMLElement).style.background = "transparent";
-                    }
-                  }}
-                >
-                  <span style={{
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    paddingRight: 8,
-                  }}>
-                    {o.label}
-                  </span>
-                  {selected && (
-                    <svg
-                      width="13"
-                      height="13"
-                      viewBox="0 0 12 12"
-                      fill="none"
-                      style={{ color: "#34D399", flexShrink: 0 }}
+            <div
+              style={{
+                background: "#1B1B22",
+                border: "1px solid rgba(255,255,255,0.18)",
+                borderRadius: 16,
+                padding: "4px 0",
+                maxHeight: 260,
+                overflowY: "auto",
+                boxShadow:
+                  "0 24px 60px -12px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.05) inset",
+              }}
+            >
+              {options.map((o) => {
+                const selected = o.value === value;
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() => {
+                      onChange(o.value);
+                      setOpen(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "10px 16px",
+                      fontSize: 14,
+                      fontWeight: 500,
+                      color: "#ffffff",
+                      background: selected ? "rgba(255,255,255,0.08)" : "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      transition: "background 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!selected) {
+                        (e.currentTarget as HTMLElement).style.background =
+                          "rgba(255,255,255,0.05)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!selected) {
+                        (e.currentTarget as HTMLElement).style.background = "transparent";
+                      }
+                    }}
+                  >
+                    <span
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        paddingRight: 8,
+                      }}
                     >
-                      <path
-                        d="M2.5 6.5L5 9L9.5 3.5"
-                        stroke="currentColor"
-                        strokeWidth="1.9"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                      {o.label}
+                    </span>
+                    {selected && (
+                      <svg
+                        width="13"
+                        height="13"
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        style={{ color: "#34D399", flexShrink: 0 }}
+                      >
+                        <path
+                          d="M2.5 6.5L5 9L9.5 3.5"
+                          stroke="currentColor"
+                          strokeWidth="1.9"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -111,7 +111,7 @@ export default function Nav({
       >
         {indicator && (
           <span
-            className="absolute top-1 bottom-1 bg-white rounded-full shadow-[0_2px_10px_-2px_rgba(255,255,255,0.32)] transition-all duration-[220ms] ease-ios-sharp"
+            className="absolute top-1 bottom-1 bg-white rounded-full shadow-[0_2px_10px_-2px_rgba(255,255,255,0.32)] transition-[left,width] duration-100 ease-out"
             style={{ left: indicator.left, width: indicator.width }}
             aria-hidden
           />

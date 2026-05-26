@@ -64,7 +64,8 @@ export default function StoresEditor({ initial }: { initial: Store[] }) {
     setStores((s) => s.map((x) => (x.id === id ? { ...x, ...patch } : x)));
     const { error } = await supabase.from("stores").update(patch).eq("id", id);
     if (error) {
-      setError(error.message);
+      console.error("Store update failed", patch, error);
+      setError(`${error.message} — did you run migration 0004?`);
       setStores(prev);
       throw error;
     }
