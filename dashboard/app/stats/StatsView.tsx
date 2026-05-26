@@ -10,21 +10,24 @@ import {
   dailySeries,
   dailySeriesPerStore,
   hourOfWeekPerStore,
+  monthlyContiguous,
+  monthlySeriesPerStore,
   salesByHourOfWeek,
   salesByMonth,
   snapshotsToSales,
   weeklySeries,
+  weeklySeriesPerStore,
 } from "@/lib/analytics";
 import { colorForStore } from "@/lib/colors";
 
-type Range = "7d" | "30d" | "12w" | "12m";
+type Range = "7d" | "1m" | "3m" | "1y";
 type ChartKind = "bar" | "line";
 
 const RANGE_OPTIONS: { value: Range; label: string }[] = [
   { value: "7d", label: "7D" },
-  { value: "30d", label: "30D" },
-  { value: "12w", label: "12W" },
-  { value: "12m", label: "12M" },
+  { value: "1m", label: "1M" },
+  { value: "3m", label: "3M" },
+  { value: "1y", label: "1Y" },
 ];
 
 const CHART_OPTIONS: { value: ChartKind; label: string }[] = [
@@ -56,9 +59,9 @@ export default function StatsView({
 
   const series = useMemo(() => {
     if (range === "7d") return dailySeries(sales, 7);
-    if (range === "30d") return dailySeries(sales, 30);
-    if (range === "12w") return weeklySeries(sales, 12);
-    return salesByMonth(sales).slice(-12);
+    if (range === "1m") return dailySeries(sales, 30);
+    if (range === "3m") return weeklySeries(sales, 12);
+    return monthlyContiguous(sales, 12);
   }, [sales, range]);
 
   const heatmap = useMemo(() => salesByHourOfWeek(sales), [sales]);
@@ -79,13 +82,13 @@ export default function StatsView({
 
   const isCompare = storeId === "compare";
 
-  // Per-store series for Compare mode.
+  // Per-store series for Compare mode, bucketed to match the range.
   const perStoreSeries = useMemo(() => {
     if (!isCompare) return null;
-    return dailySeriesPerStore(
-      snapsByStore,
-      range === "7d" ? 7 : range === "30d" ? 30 : range === "12w" ? 84 : 365,
-    );
+    if (range === "7d") return dailySeriesPerStore(snapsByStore, 7);
+    if (range === "1m") return dailySeriesPerStore(snapsByStore, 30);
+    if (range === "3m") return weeklySeriesPerStore(snapsByStore, 12);
+    return monthlySeriesPerStore(snapsByStore, 12);
   }, [isCompare, snapsByStore, range]);
 
   const perStoreHeatmap = useMemo(() => {
@@ -93,20 +96,33 @@ export default function StatsView({
     return hourOfWeekPerStore(snapsByStore);
   }, [isCompare, snapsByStore]);
 
+  // For the Compare leaderboard: totals per store across the range.
+  const compareTotals = useMemo(() => {
+    if (!isCompare || !perStoreSeries) return [];
+    const rows = stores.map((s) => {
+      const ser = perStoreSeries.get(s.id) ?? [];
+      const count = ser.reduce((a, b) => a + b.count, 0);
+      const rev = s.avg_price_minor != null ? count * s.avg_price_minor : null;
+      return { store: s, count, rev };
+    });
+    rows.sort((a, b) => b.count - a.count);
+    return rows;
+  }, [isCompare, perStoreSeries, stores]);
+
   const rangeLabel = {
     "7d": "last 7 days",
-    "30d": "last 30 days",
-    "12w": "last 12 weeks",
-    "12m": "last 12 months",
+    "1m": "last month",
+    "3m": "last 3 months",
+    "1y": "last year",
   }[range];
 
   const selected = selectedBar != null ? series[selectedBar] : null;
 
   return (
     <>
-      <h1 className="text-[26px] font-bold mt-5 mb-5 tracking-tight">Stats</h1>
+      <h1 className="text-[24px] sm:text-[26px] font-bold mt-3 mb-3 tracking-tight">Stats</h1>
 
-      <div className="flex gap-2 mb-5 flex-wrap items-center animate-fade-up">
+      <div className="flex gap-2 mb-3 flex-wrap items-center animate-fade-up">
         <Dropdown value={storeId} options={storeOptions} onChange={setStoreId} />
         <Dropdown<Range>
           value={range}
@@ -123,52 +139,76 @@ export default function StatsView({
         />
       </div>
 
-      {/* HEADLINE */}
-      <section className="glass px-6 py-10 sm:py-12 mb-4 text-center animate-fade-up">
-        <AnimatedNumber
-          value={totalInRange}
-          format="count"
-          className="num block text-[72px] sm:text-[88px] leading-[0.95] font-bold"
-        />
-        <div className="mt-3 text-[13px] text-text-2 font-medium">
-          sold {rangeLabel}
-        </div>
-
-        {avg != null && (
-          <>
-            <AnimatedNumber
-              value={totalRev}
-              format="money"
-              currency={currency}
-              className="num block text-[36px] sm:text-[44px] leading-none font-semibold text-money mt-8"
-            />
-            <div className="mt-2.5 text-[13px] text-text-2 font-medium">
-              earned {rangeLabel}
-            </div>
-          </>
-        )}
-
-        {best && (
-          <div className="mt-7 pt-5 border-t border-line text-[13px]">
-            <span className="text-text-3">Best day this month — </span>
-            <span className="num text-white font-semibold">
-              {best.count.toLocaleString("en-US")}
-            </span>
-            <span className="text-text-3">
-              {" "}on{" "}
-              {best.date.toLocaleDateString("en-US", {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-              })}
-            </span>
+      {/* HEADLINE — compare mode shows a leaderboard, else big totals */}
+      {isCompare ? (
+        <section className="glass px-5 sm:px-6 py-5 mb-3 animate-fade-up">
+          <div className="text-[11px] text-text-3 mb-3 font-semibold tracking-wider uppercase">
+            Leaderboard · {rangeLabel}
           </div>
-        )}
-      </section>
+          {compareTotals.length === 0 ? (
+            <div className="text-[13px] text-text-3 py-2">No stores yet.</div>
+          ) : (
+            <div className="space-y-2">
+              {compareTotals.map(({ store, count, rev }, i) => (
+                <LeaderRow
+                  key={store.id}
+                  rank={i + 1}
+                  store={store}
+                  count={count}
+                  rev={rev}
+                  max={compareTotals[0]?.count ?? 1}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      ) : (
+        <section className="glass px-6 py-9 sm:py-10 mb-3 text-center animate-fade-up">
+          <AnimatedNumber
+            value={totalInRange}
+            format="count"
+            className="num block text-[72px] sm:text-[88px] leading-[0.95] font-bold"
+          />
+          <div className="mt-3 text-[13px] text-text-2 font-medium">
+            sold {rangeLabel}
+          </div>
+
+          {avg != null && (
+            <>
+              <AnimatedNumber
+                value={totalRev}
+                format="money"
+                currency={currency}
+                className="num block text-[36px] sm:text-[44px] leading-none font-semibold text-money mt-7"
+              />
+              <div className="mt-2.5 text-[13px] text-text-2 font-medium">
+                earned {rangeLabel}
+              </div>
+            </>
+          )}
+
+          {best && (
+            <div className="mt-6 pt-4 border-t border-line text-[13px]">
+              <span className="text-text-3">Best day this month — </span>
+              <span className="num text-white font-semibold">
+                {best.count.toLocaleString("en-US")}
+              </span>
+              <span className="text-text-3">
+                {" "}on{" "}
+                {best.date.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* MAIN CHART */}
       <section
-        className="glass p-6 mb-4 animate-fade-up"
+        className="glass p-5 sm:p-6 mb-2.5 animate-fade-up"
         style={{ animationDelay: "60ms" }}
       >
         <div className="flex justify-between items-baseline mb-1">
@@ -234,7 +274,7 @@ export default function StatsView({
 
       {/* HEATMAP */}
       <section
-        className="glass p-6 mb-4 animate-fade-up"
+        className="glass p-5 sm:p-6 mb-2.5 animate-fade-up"
         style={{ animationDelay: "120ms" }}
       >
         <div className="text-[13px] text-text-2 mb-1 font-semibold tracking-tight">
@@ -256,7 +296,7 @@ export default function StatsView({
       {/* MONTHLY LIST */}
       {monthTotals.length > 1 && (
         <section
-          className="glass p-6 animate-fade-up"
+          className="glass p-5 sm:p-6 animate-fade-up"
           style={{ animationDelay: "180ms" }}
         >
           <div className="text-[13px] text-text-2 mb-2 font-semibold tracking-tight">
@@ -398,17 +438,7 @@ function LineChart({
     return [x, y] as const;
   });
 
-  // Smooth Catmull-Rom-ish curve through points.
-  let path = "";
-  if (points.length > 0) {
-    path = `M ${points[0][0]},${points[0][1]}`;
-    for (let i = 1; i < points.length; i++) {
-      const [x, y] = points[i];
-      const [px, py] = points[i - 1];
-      const cpx = (px + x) / 2;
-      path += ` Q ${cpx},${py} ${x},${y}`;
-    }
-  }
+  const path = smoothPath(points);
 
   const areaPath = points.length
     ? `${path} L ${points[points.length - 1][0]},${h} L ${points[0][0]},${h} Z`
@@ -480,6 +510,82 @@ function LineChart({
             {i % labelStride === 0 ? d.label : ""}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// Catmull-Rom → cubic Bezier. Renders a noticeably smoother curve than
+// the quadratic-midpoint approximation. tension ∈ [0, 1]; lower = looser.
+function smoothPath(points: readonly (readonly [number, number])[]): string {
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0][0]},${points[0][1]}`;
+  const tension = 0.22;
+  let d = `M ${points[0][0]},${points[0][1]}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] ?? points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] ?? p2;
+    const cp1x = p1[0] + (p2[0] - p0[0]) * tension;
+    const cp1y = p1[1] + (p2[1] - p0[1]) * tension;
+    const cp2x = p2[0] - (p3[0] - p1[0]) * tension;
+    const cp2y = p2[1] - (p3[1] - p1[1]) * tension;
+    d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2[0]},${p2[1]}`;
+  }
+  return d;
+}
+
+function LeaderRow({
+  rank,
+  store,
+  count,
+  rev,
+  max,
+}: {
+  rank: number;
+  store: Store;
+  count: number;
+  rev: number | null;
+  max: number;
+}) {
+  const tint = colorForStore(store);
+  const widthPct = max > 0 ? (count / max) * 100 : 0;
+
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-line">
+      {/* Filled bar background using the store's color, sized by share */}
+      <div
+        aria-hidden
+        className="absolute inset-y-0 left-0"
+        style={{
+          width: `${widthPct}%`,
+          background: `linear-gradient(90deg, ${tint}33 0%, ${tint}1a 100%)`,
+        }}
+      />
+      <div className="relative flex items-center gap-3 px-3 py-2.5">
+        <span
+          className="num text-[12px] font-bold text-text-3 w-5 text-center flex-shrink-0"
+        >
+          {rank}
+        </span>
+        <span
+          className="w-2 h-2 rounded-full flex-shrink-0"
+          style={{ background: tint, boxShadow: `0 0 8px ${tint}99` }}
+        />
+        <span className="text-[14px] font-semibold truncate flex-1">
+          {store.username}
+        </span>
+        <div className="text-right flex-shrink-0">
+          <div className="num text-[16px] font-semibold leading-none">
+            {count.toLocaleString("en-US")}
+          </div>
+          {rev != null && rev > 0 && (
+            <div className="num-tight text-[10.5px] text-money-soft mt-0.5 font-semibold">
+              {formatMoneyMinor(rev, store.currency)}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -612,13 +718,7 @@ function CompareLineChart({
             const y = padY + usableH - (d.count / max) * usableH;
             return [x, y] as const;
           });
-          let path = `M ${points[0][0]},${points[0][1]}`;
-          for (let i = 1; i < points.length; i++) {
-            const [x, y] = points[i];
-            const [px, py] = points[i - 1];
-            const cpx = (px + x) / 2;
-            path += ` Q ${cpx},${py} ${x},${y}`;
-          }
+          const path = smoothPath(points);
           return (
             <g key={store.id}>
               <path

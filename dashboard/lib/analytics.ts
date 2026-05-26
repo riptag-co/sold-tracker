@@ -273,6 +273,56 @@ export function dailySeriesPerStore(
   return out;
 }
 
+// Last N calendar months, zero-filled — useful for the 1Y range so
+// every store's series has aligned buckets.
+export function monthlyContiguous(
+  sales: Sale[],
+  months = 12,
+  now = new Date(),
+): { key: string; label: string; count: number }[] {
+  const out: { key: string; label: string; count: number }[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+    const startT = start.getTime();
+    const endT = end.getTime();
+    let count = 0;
+    for (const s of sales) {
+      if (s.t >= startT && s.t < endT) count += s.n;
+    }
+    out.push({
+      key: `${start.getFullYear()}-${pad(start.getMonth() + 1)}`,
+      label: start.toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+      count,
+    });
+  }
+  return out;
+}
+
+export function weeklySeriesPerStore(
+  snapsByStore: Map<string, Snapshot[]>,
+  weeks: number,
+  now = new Date(),
+): Map<string, { key: string; label: string; count: number }[]> {
+  const out = new Map<string, { key: string; label: string; count: number }[]>();
+  for (const [storeId, snaps] of snapsByStore) {
+    out.set(storeId, weeklySeries(snapshotsToSales(snaps), weeks, now));
+  }
+  return out;
+}
+
+export function monthlySeriesPerStore(
+  snapsByStore: Map<string, Snapshot[]>,
+  months = 12,
+  now = new Date(),
+): Map<string, { key: string; label: string; count: number }[]> {
+  const out = new Map<string, { key: string; label: string; count: number }[]>();
+  for (const [storeId, snaps] of snapsByStore) {
+    out.set(storeId, monthlyContiguous(snapshotsToSales(snaps), months, now));
+  }
+  return out;
+}
+
 // Per-store hour-of-week — returns one 7x24 grid per store_id.
 export function hourOfWeekPerStore(
   snapsByStore: Map<string, Snapshot[]>,
