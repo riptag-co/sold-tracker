@@ -123,10 +123,15 @@ export default function GoalsView({
     const prev = currentMainId;
     const next = currentMainId === id ? null : id;
     setCurrentMainId(next);
-    const { error } = await supabase
+
+    // Use upsert + select-back so we both (a) create the singleton
+    // row if it's missing and (b) confirm the save actually stuck.
+    const { data, error } = await supabase
       .from("control")
-      .update({ main_goal_id: next })
-      .eq("id", 1);
+      .upsert({ id: 1, main_goal_id: next })
+      .select("main_goal_id")
+      .single();
+
     if (error) {
       console.error("Set main goal failed:", error);
       setCurrentMainId(prev);
@@ -134,6 +139,13 @@ export default function GoalsView({
         ? "Run migration 0006 in Supabase SQL editor to add main_goal_id."
         : error.message;
       setMainError(msg);
+      return;
+    }
+    if ((data?.main_goal_id ?? null) !== next) {
+      setCurrentMainId(prev);
+      setMainError(
+        "Save didn't persist. Verify the main_goal_id column exists on the control table.",
+      );
       return;
     }
     router.refresh();
