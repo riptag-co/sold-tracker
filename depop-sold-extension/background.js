@@ -2,9 +2,10 @@
 // from the dashboard, polls each Depop shop's public profile page,
 // scrapes the sold count, and pushes the batch to the dashboard.
 //
-// All persistent state lives in the cloud now (Supabase). The only
-// things stored locally are the pairing creds (supabaseUrl,
-// deviceToken, userId) and the refresh interval.
+// All persistent state lives in the cloud (Supabase). Locally we only
+// stash pairing creds, refresh interval, and a couple of small bits
+// (last-seen manual-refresh timestamp, last-run time) so this MV3
+// service worker survives Chrome's aggressive idle-suspension.
 
 import {
   fetchDashboardData,
@@ -17,9 +18,10 @@ const SOLD_RX = /(\d[\d,]*)\s+sold\b/i;
 const DEFAULT_REFRESH_MINUTES = 5;
 const ALARM_NAME = "refresh";
 const CONTROL_ALARM = "control-check";
-const CONTROL_PERIOD_MIN = 0.5; // 30s — minimum Chrome allows in dev.
-
-let lastManualRefreshSeen = null;
+const RETRY_ALARM = "retry-blocked";
+const CONTROL_PERIOD_MIN = 0.5; // 30s — Chrome MV3 min for unpacked extensions
+const RETRY_DELAY_MIN = 1;       // 60s fast follow-up after CF blocks
+const LAST_SEEN_KEY = "lastManualRefreshSeen";
 
 const onlyDigits = (s) => parseInt(String(s).replace(/[^\d]/g, ""), 10);
 
@@ -41,7 +43,8 @@ async function ensureAlarm() {
     });
   }
 
-  // Faster alarm: checks for manual refresh requests every 30 seconds.
+  // Faster alarm — checks for manual refresh requests AND keeps the
+  // service worker warm enough that Chrome doesn't fully sleep it.
   const ctrl = await chrome.alarms.get(CONTROL_ALARM);
   if (!ctrl || ctrl.periodInMinutes !== CONTROL_PERIOD_MIN) {
     await chrome.alarms.clear(CONTROL_ALARM);
@@ -69,6 +72,7 @@ chrome.runtime.onStartup.addListener(async () => {
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM_NAME) refreshAll().catch(() => {});
   else if (alarm.name === CONTROL_ALARM) checkManualRefresh().catch(() => {});
+  else if (alarm.name === RETRY_ALARM) refreshAll().catch(() => {});
 });
 
 async function checkManualRefresh() {
@@ -80,13 +84,15 @@ async function checkManualRefresh() {
     return;
   }
   if (!ts) return;
-  // Initialize on first sight so we don't fire on a stale value.
-  if (lastManualRefreshSeen == null) {
-    lastManualRefreshSeen = ts;
+  // Persist across SW lifecycles so a restart between control-checks
+  // doesn't silently swallow a pending refresh request.
+  const { [LAST_SEEN_KEY]: lastSeen } = await chrome.storage.local.get(LAST_SEEN_KEY);
+  if (lastSeen == null) {
+    await chrome.storage.local.set({ [LAST_SEEN_KEY]: ts });
     return;
   }
-  if (ts !== lastManualRefreshSeen) {
-    lastManualRefreshSeen = ts;
+  if (ts !== lastSeen) {
+    await chrome.storage.local.set({ [LAST_SEEN_KEY]: ts });
     refreshAll().catch(() => {});
   }
 }
@@ -94,7 +100,6 @@ async function checkManualRefresh() {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
   if (changes.refreshMinutes) ensureAlarm();
-  // Re-poll the moment we pair so the user sees data immediately.
   if (changes.deviceToken && changes.deviceToken.newValue) {
     refreshAll().catch(() => {});
   }
@@ -131,13 +136,16 @@ async function fetchSoldCount(username) {
   return n;
 }
 
+function looksCloudflareBlocked(msg) {
+  if (!msg) return false;
+  return /^blocked \(HTTP 40[3]\)|^blocked \(HTTP 503\)/.test(msg);
+}
+
 async function refreshAll() {
   if (!(await isPaired())) {
     return { skipped: "not paired" };
   }
 
-  // Pull the canonical store list from the dashboard. If the user
-  // hasn't added any shops yet, there's nothing to do.
   let dash;
   try {
     dash = await fetchDashboardData();
@@ -157,6 +165,16 @@ async function refreshAll() {
       }
     }),
   );
+
+  // If any store hit Cloudflare, schedule a one-time retry in ~60s.
+  // Recovery becomes seconds-to-minutes instead of waiting for the
+  // next regular 5-minute cycle. Single alarm covers all blocked
+  // stores in a single batch retry.
+  const anyBlocked = results.some((r) => !r.ok && looksCloudflareBlocked(r.error));
+  if (anyBlocked) {
+    await chrome.alarms.clear(RETRY_ALARM);
+    await chrome.alarms.create(RETRY_ALARM, { delayInMinutes: RETRY_DELAY_MIN });
+  }
 
   try {
     const ingestResult = await ingest(results);

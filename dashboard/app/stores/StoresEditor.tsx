@@ -73,7 +73,29 @@ export default function StoresEditor({ initial }: { initial: Store[] }) {
 
   return (
     <>
-      <section className="glass p-6 mb-4 animate-fade-up">
+      {stores.length === 0 ? (
+        <div className="glass p-7 text-center text-text-2 text-[14px] mb-4">
+          No shops added yet.
+        </div>
+      ) : (
+        <div className="grid gap-2 mb-4">
+          {stores.map((s, i) => (
+            <div
+              key={s.id}
+              className="animate-fade-up"
+              style={{ animationDelay: `${i * 40}ms` }}
+            >
+              <StoreRow
+                store={s}
+                onRemove={() => removeStore(s.id)}
+                onUpdate={(patch) => updateField(s.id, patch)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <section className="glass p-6 animate-fade-up">
         <label className="block text-[14px] font-semibold mb-1.5 tracking-tight">
           Add shops
         </label>
@@ -98,28 +120,6 @@ export default function StoresEditor({ initial }: { initial: Store[] }) {
           </button>
         </div>
       </section>
-
-      {stores.length === 0 ? (
-        <div className="glass p-7 text-center text-text-2 text-[14px]">
-          No shops added yet.
-        </div>
-      ) : (
-        <div className="grid gap-2">
-          {stores.map((s, i) => (
-            <div
-              key={s.id}
-              className="animate-fade-up"
-              style={{ animationDelay: `${i * 40}ms` }}
-            >
-              <StoreRow
-                store={s}
-                onRemove={() => removeStore(s.id)}
-                onUpdate={(patch) => updateField(s.id, patch)}
-              />
-            </div>
-          ))}
-        </div>
-      )}
     </>
   );
 }
