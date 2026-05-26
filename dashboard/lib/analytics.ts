@@ -63,15 +63,16 @@ export function salesByHourOfWeek(sales: Sale[]): number[][] {
   return grid;
 }
 
-// Ordered array of {date, count} for the last `days` days, ending today.
-// Missing days fill in as 0.
+// Ordered array of {key, label, count} for the last `days` days,
+// ending today. Missing days fill in as 0. Shape matches the weekly
+// and monthly series so all three can flow through the same charts.
 export function dailySeries(
   sales: Sale[],
   days: number,
   now = new Date(),
-): { date: string; label: string; count: number }[] {
+): { key: string; label: string; count: number }[] {
   const byDay = salesByDay(sales);
-  const out: { date: string; label: string; count: number }[] = [];
+  const out: { key: string; label: string; count: number }[] = [];
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
   for (let i = days - 1; i >= 0; i--) {
@@ -79,7 +80,7 @@ export function dailySeries(
     d.setDate(d.getDate() - i);
     const key = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     out.push({
-      date: key,
+      key,
       label: d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" }),
       count: byDay.get(key) ?? 0,
     });
@@ -264,8 +265,8 @@ export function dailySeriesPerStore(
   snapsByStore: Map<string, Snapshot[]>,
   days: number,
   now = new Date(),
-): Map<string, { date: string; label: string; count: number }[]> {
-  const out = new Map<string, { date: string; label: string; count: number }[]>();
+): Map<string, { key: string; label: string; count: number }[]> {
+  const out = new Map<string, { key: string; label: string; count: number }[]>();
   for (const [storeId, snaps] of snapsByStore) {
     const sales = snapshotsToSales(snaps);
     out.set(storeId, dailySeries(sales, days, now));

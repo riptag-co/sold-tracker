@@ -599,7 +599,7 @@ function CompareBarChart({
   days,
 }: {
   stores: Store[];
-  perStoreSeries: Map<string, { date: string; label: string; count: number }[]>;
+  perStoreSeries: Map<string, { key: string; label: string; count: number }[]>;
   days: number;
 }) {
   // Build a per-day array of { storeId → count } over the right window.
@@ -678,7 +678,7 @@ function CompareLineChart({
   perStoreSeries,
 }: {
   stores: Store[];
-  perStoreSeries: Map<string, { date: string; label: string; count: number }[]>;
+  perStoreSeries: Map<string, { key: string; label: string; count: number }[]>;
 }) {
   // All series should have the same length and labels — take the first.
   const firstSeries = perStoreSeries.values().next().value ??
