@@ -74,14 +74,6 @@ export default function StatsView({
   const monthTotals = useMemo(() => salesByMonth(sales), [sales]);
 
   const totalInRange = series.reduce((a, b) => a + b.count, 0);
-  const totalRev =
-    storeId === "all"
-      ? allStoresRevenue ?? 0
-      : singleAvg != null
-        ? totalInRange * singleAvg
-        : 0;
-  const showRevenueHeadline =
-    storeId === "all" ? allStoresRevenue != null : singleAvg != null;
 
   const storeOptions = [
     { value: "all", label: "All stores" },
@@ -165,6 +157,15 @@ export default function StatsView({
     }
     return map;
   }, [storeId, stores, snapsByStore]);
+
+  const totalRev =
+    storeId === "all"
+      ? allStoresRevenue ?? 0
+      : singleAvg != null
+        ? totalInRange * singleAvg
+        : 0;
+  const showRevenueHeadline =
+    storeId === "all" ? allStoresRevenue != null : singleAvg != null;
 
   const rangeLabel = {
     "7d": "last 7 days",
