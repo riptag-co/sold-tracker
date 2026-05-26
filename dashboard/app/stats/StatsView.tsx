@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import AnimatedNumber from "@/components/AnimatedNumber";
+import Dropdown from "@/components/Dropdown";
 import type { Snapshot, Store } from "@/lib/stats";
 import { formatMoneyMinor, groupSnapshots } from "@/lib/stats";
 import {
@@ -10,9 +11,18 @@ import {
   salesByHourOfWeek,
   salesByMonth,
   snapshotsToSales,
+  weeklySeries,
 } from "@/lib/analytics";
+import { colorForUsername } from "@/lib/colors";
 
-type Range = "7d" | "30d" | "month";
+type Range = "7d" | "30d" | "12w" | "12m";
+
+const RANGE_OPTIONS: { value: Range; label: string }[] = [
+  { value: "7d", label: "7D" },
+  { value: "30d", label: "30D" },
+  { value: "12w", label: "12W" },
+  { value: "12m", label: "12M" },
+];
 
 export default function StatsView({
   stores,
@@ -23,6 +33,7 @@ export default function StatsView({
 }) {
   const [storeId, setStoreId] = useState<string>("all");
   const [range, setRange] = useState<Range>("30d");
+  const [selectedBar, setSelectedBar] = useState<number | null>(null);
 
   const snapsByStore = useMemo(() => groupSnapshots(snapshots), [snapshots]);
   const filtered =
@@ -32,58 +43,76 @@ export default function StatsView({
   const selectedStore = stores.find((s) => s.id === storeId);
   const currency = selectedStore?.currency ?? "USD";
   const avg = selectedStore?.avg_price_minor ?? avgAcrossStores(stores);
+  const accent = selectedStore ? colorForUsername(selectedStore.username) : null;
 
-  const days = range === "7d" ? 7 : 30;
-  const series = useMemo(() => dailySeries(sales, days), [sales, days]);
+  const series = useMemo(() => {
+    if (range === "7d") return dailySeries(sales, 7);
+    if (range === "30d") return dailySeries(sales, 30);
+    if (range === "12w") return weeklySeries(sales, 12);
+    return salesByMonth(sales).slice(-12);
+  }, [sales, range]);
+
   const heatmap = useMemo(() => salesByHourOfWeek(sales), [sales]);
   const best = useMemo(() => bestDayThisMonth(sales), [sales]);
   const monthTotals = useMemo(() => salesByMonth(sales), [sales]);
 
   const totalInRange = series.reduce((a, b) => a + b.count, 0);
-  const monthTotal = range === "month" ? monthCount(sales) : null;
-  const displayTotal = monthTotal ?? totalInRange;
-  const displayRev = avg != null ? displayTotal * avg : 0;
+  const totalRev = avg != null ? totalInRange * avg : 0;
+
+  const storeOptions = [
+    { value: "all", label: "All stores" },
+    ...stores.map((s) => ({
+      value: s.id,
+      label: s.display_name || s.username,
+    })),
+  ];
+
+  const rangeLabel = {
+    "7d": "last 7 days",
+    "30d": "last 30 days",
+    "12w": "last 12 weeks",
+    "12m": "last 12 months",
+  }[range];
+
+  const selected = selectedBar != null ? series[selectedBar] : null;
 
   return (
     <>
       <h1 className="text-[26px] font-bold mt-5 mb-5 tracking-tight">Stats</h1>
 
       <div className="flex gap-2 mb-5 flex-wrap items-center animate-fade-up">
-        <Select value={storeId} onChange={setStoreId}>
-          <option value="all">All stores</option>
-          {stores.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.display_name || s.username}
-            </option>
-          ))}
-        </Select>
-        <RangeToggle value={range} onChange={setRange} />
+        <Dropdown value={storeId} options={storeOptions} onChange={setStoreId} />
+        <Dropdown<Range>
+          value={range}
+          options={RANGE_OPTIONS}
+          onChange={(v) => {
+            setRange(v);
+            setSelectedBar(null);
+          }}
+        />
       </div>
 
-      {/* HEADLINE — stacked sold + earned, like overview */}
+      {/* HEADLINE */}
       <section className="glass px-6 py-10 sm:py-12 mb-4 text-center animate-fade-up">
         <AnimatedNumber
-          value={displayTotal}
+          value={totalInRange}
+          format="count"
           className="num block text-[72px] sm:text-[88px] leading-[0.95] font-bold"
         />
         <div className="mt-3 text-[13px] text-text-2 font-medium">
-          {range === "7d" && "sold last 7 days"}
-          {range === "30d" && "sold last 30 days"}
-          {range === "month" && "sold this month"}
+          sold {rangeLabel}
         </div>
 
         {avg != null && (
           <>
             <AnimatedNumber
-              value={displayRev}
+              value={totalRev}
               format="money"
               currency={currency}
               className="num block text-[36px] sm:text-[44px] leading-none font-semibold text-money mt-8"
             />
             <div className="mt-2.5 text-[13px] text-text-2 font-medium">
-              {range === "7d" && "earned last 7 days"}
-              {range === "30d" && "earned last 30 days"}
-              {range === "month" && "earned this month"}
+              earned {rangeLabel}
             </div>
           </>
         )}
@@ -106,16 +135,48 @@ export default function StatsView({
         )}
       </section>
 
+      {/* MAIN CHART */}
       <section
         className="glass p-6 mb-4 animate-fade-up"
         style={{ animationDelay: "60ms" }}
       >
-        <div className="text-[13px] text-text-2 mb-4 font-semibold tracking-tight">
-          {range === "7d" ? "Last 7 days" : "Last 30 days"}
+        <div className="flex justify-between items-baseline mb-1">
+          <div className="text-[13px] text-text-2 font-semibold tracking-tight">
+            Sales
+          </div>
+          <div className="text-[11px] text-text-3 font-medium">{rangeLabel}</div>
         </div>
-        <BarChart data={series} />
+
+        {/* Selected bar callout */}
+        <div className="h-7 flex items-center text-[12px] mb-3">
+          {selected ? (
+            <div className="flex items-baseline gap-2 animate-fade-in">
+              <span className="text-text-3">{selected.label}</span>
+              <span className="num font-semibold text-white text-[15px]">
+                {selected.count}
+              </span>
+              {avg != null && selected.count > 0 && (
+                <span className="num-tight text-money-soft font-semibold">
+                  {formatMoneyMinor(selected.count * avg, currency)}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-text-3 text-[11.5px]">
+              Tap a bar to see details
+            </span>
+          )}
+        </div>
+
+        <Chart
+          data={series}
+          selected={selectedBar}
+          onSelect={(i) => setSelectedBar(selectedBar === i ? null : i)}
+          accent={accent}
+        />
       </section>
 
+      {/* HEATMAP */}
       <section
         className="glass p-6 mb-4 animate-fade-up"
         style={{ animationDelay: "120ms" }}
@@ -129,6 +190,7 @@ export default function StatsView({
         <Heatmap grid={heatmap} />
       </section>
 
+      {/* MONTHLY LIST */}
       {monthTotals.length > 1 && (
         <section
           className="glass p-6 animate-fade-up"
@@ -174,15 +236,6 @@ export default function StatsView({
   );
 }
 
-function monthCount(sales: { t: number; n: number }[]): number {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
-  return sales
-    .filter((s) => s.t >= start && s.t < end)
-    .reduce((a, b) => a + b.n, 0);
-}
-
 function avgAcrossStores(stores: Store[]): number | null {
   const withPrices = stores.filter((s) => s.avg_price_minor != null);
   if (withPrices.length === 0) return null;
@@ -192,27 +245,66 @@ function avgAcrossStores(stores: Store[]): number | null {
   );
 }
 
-function BarChart({
+function Chart({
   data,
+  selected,
+  onSelect,
+  accent,
 }: {
-  data: { date: string; label: string; count: number }[];
+  data: { key?: string; date?: string; label: string; count: number }[];
+  selected: number | null;
+  onSelect: (i: number) => void;
+  accent?: string | null;
 }) {
   const max = Math.max(1, ...data.map((d) => d.count));
+  const labelStride = data.length > 14 ? Math.ceil(data.length / 7) : 1;
+  const tint = accent ?? null;
+
   return (
-    <div className="flex items-end gap-1 h-36">
-      {data.map((d, i) => (
-        <div key={d.date} className="flex-1 flex flex-col items-center group">
+    <div>
+      <div className="flex items-end gap-1 h-44 sm:h-48">
+        {data.map((d, i) => {
+          const h = (d.count / max) * 100;
+          const isSelected = selected === i;
+          const barStyle: React.CSSProperties = {
+            height: `${h}%`,
+            minHeight: d.count > 0 ? "4px" : "0",
+            animation: `fadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) ${i * 22}ms both`,
+          };
+          if (isSelected) {
+            barStyle.background = tint ?? "#34D399";
+            barStyle.boxShadow = `0 0 18px -4px ${tint ?? "#34D399"}aa`;
+          } else if (tint) {
+            barStyle.background = `linear-gradient(to top, ${tint}88 0%, ${tint} 100%)`;
+          }
+          return (
+            <button
+              key={d.key ?? d.date ?? d.label + i}
+              onClick={() => onSelect(i)}
+              className="flex-1 h-full flex flex-col justify-end group focus:outline-none"
+            >
+              <div
+                className={`w-full rounded-md transition-all duration-300 ease-ios-spring ${
+                  !tint && !isSelected
+                    ? "bg-gradient-to-t from-white/55 to-white/90 group-hover:from-white/75 group-hover:to-white"
+                    : ""
+                }`}
+                style={barStyle}
+              />
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex gap-1 mt-2">
+        {data.map((d, i) => (
           <div
-            className="w-full rounded-md bg-gradient-to-t from-white/55 to-white/90 group-hover:from-white/75 group-hover:to-white transition-all duration-200"
-            style={{
-              height: `${(d.count / max) * 100}%`,
-              minHeight: d.count > 0 ? "3px" : "0",
-              animation: `fadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) ${i * 18}ms both`,
-            }}
-            title={`${d.label}: ${d.count}`}
-          />
-        </div>
-      ))}
+            key={(d.key ?? d.date ?? d.label) + "-lbl"}
+            className="flex-1 text-[9.5px] text-text-3/80 text-center font-medium truncate"
+          >
+            {i % labelStride === 0 ? d.label : ""}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -264,57 +356,6 @@ function Heatmap({ grid }: { grid: number[][] }) {
         ))}
         <span>more</span>
       </div>
-    </div>
-  );
-}
-
-function Select({
-  value,
-  onChange,
-  children,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="bg-white/[0.04] border border-line-strong rounded-full px-4 py-2 text-[13px] font-semibold text-white outline-none cursor-pointer hover:bg-white/[0.07] transition-colors"
-    >
-      {children}
-    </select>
-  );
-}
-
-function RangeToggle({
-  value,
-  onChange,
-}: {
-  value: Range;
-  onChange: (v: Range) => void;
-}) {
-  const opts: { v: Range; label: string }[] = [
-    { v: "7d", label: "7d" },
-    { v: "30d", label: "30d" },
-    { v: "month", label: "Month" },
-  ];
-  return (
-    <div className="flex gap-0.5 bg-white/[0.04] border border-line p-0.5 rounded-full">
-      {opts.map((o) => (
-        <button
-          key={o.v}
-          onClick={() => onChange(o.v)}
-          className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-semibold transition-all duration-300 ease-ios-spring ${
-            value === o.v
-              ? "bg-white text-[#0A0A0B] shadow-[0_2px_8px_-2px_rgba(255,255,255,0.25)]"
-              : "text-text-2 hover:text-white"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
     </div>
   );
 }

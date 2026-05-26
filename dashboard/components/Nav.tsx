@@ -2,55 +2,126 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const links = [
   { href: "/", label: "Overview" },
   { href: "/stats", label: "Stats" },
   { href: "/stores", label: "Stores" },
+  { href: "/goals", label: "Goals" },
   { href: "/settings", label: "Settings" },
 ];
 
-export default function Nav() {
+const useIsoLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+type LiveStatus = "live" | "stale" | "offline" | "none";
+
+function liveStatusFromTimestamp(t: number | null): LiveStatus {
+  if (t == null) return "none";
+  const age = Date.now() - t;
+  if (age < 10 * 60_000) return "live";
+  if (age < 30 * 60_000) return "stale";
+  return "offline";
+}
+
+function statusLabel(s: LiveStatus): string {
+  switch (s) {
+    case "live": return "Live";
+    case "stale": return "Catching up";
+    case "offline": return "Offline";
+    case "none": return "Not paired";
+  }
+}
+
+export default function Nav({
+  latestSnapshotT,
+}: {
+  latestSnapshotT: number | null;
+}) {
   const path = usePathname();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
+  const [status, setStatus] = useState<LiveStatus>(liveStatusFromTimestamp(latestSnapshotT));
+  const activeIdx = Math.max(0, links.findIndex((l) => l.href === path));
+
+  // Re-evaluate liveness every 30s without round-tripping the server.
+  useEffect(() => {
+    setStatus(liveStatusFromTimestamp(latestSnapshotT));
+    const id = setInterval(() => {
+      setStatus(liveStatusFromTimestamp(latestSnapshotT));
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [latestSnapshotT]);
+
+  useIsoLayoutEffect(() => {
+    function measure() {
+      const el = tabRefs.current[activeIdx];
+      const container = containerRef.current;
+      if (!el || !container) return;
+      const c = container.getBoundingClientRect();
+      const e = el.getBoundingClientRect();
+      setIndicator({ left: e.left - c.left, width: e.width });
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [activeIdx]);
+
+  const dotClass =
+    status === "live"
+      ? "bg-money shadow-[0_0_10px_rgba(52,211,153,0.6)] animate-live-pulse"
+      : status === "stale"
+        ? "bg-amber-300/90"
+        : status === "offline"
+          ? "bg-red-400/80"
+          : "bg-white/15";
+
   return (
     <header className="px-4 pt-7 pb-4 max-w-2xl mx-auto animate-fade-in">
-      {/* Centered, distinctive wordmark */}
       <div className="flex justify-center mb-6">
-        <Link
-          href="/"
-          className="group inline-flex items-center gap-2.5 select-none"
-        >
-          <span
-            className="font-rounded text-[13px] font-bold tracking-[0.32em] text-white/95"
-          >
+        <Link href="/" className="group inline-flex items-center gap-2.5 select-none">
+          <span className="font-rounded text-[13px] font-bold tracking-[0.32em] text-white/95">
             SOLD
           </span>
-          <span
-            className="font-display italic text-[15px] font-light text-white/50 -mx-0.5 -mt-0.5"
-          >
-            ·
-          </span>
-          <span
-            className="font-rounded text-[13px] font-bold tracking-[0.32em] text-white/95"
-          >
+          <span className="font-display italic text-[15px] font-light text-white/50 -mx-0.5 -mt-0.5">·</span>
+          <span className="font-rounded text-[13px] font-bold tracking-[0.32em] text-white/95">
             TRACKER
           </span>
-          <span className="live-dot ml-1.5" aria-hidden />
+          <span
+            className={`ml-2 w-1.5 h-1.5 rounded-full ${dotClass}`}
+            aria-label={statusLabel(status)}
+            title={statusLabel(status)}
+          />
+          <span className="text-[10px] uppercase tracking-[0.18em] text-text-3 ml-0.5 font-semibold">
+            {statusLabel(status)}
+          </span>
         </Link>
       </div>
 
-      {/* iOS segmented control */}
-      <nav className="flex gap-0.5 p-1 rounded-full bg-white/[0.04] border border-line text-[13px] backdrop-blur-md">
-        {links.map((l) => {
-          const active = path === l.href;
+      <nav
+        ref={containerRef}
+        className="relative flex p-1 rounded-full bg-white/[0.04] border border-line text-[12.5px] backdrop-blur-md"
+      >
+        {indicator && (
+          <span
+            className="absolute top-1 bottom-1 bg-white rounded-full shadow-[0_2px_10px_-2px_rgba(255,255,255,0.32)] transition-all duration-[450ms] ease-ios-spring"
+            style={{ left: indicator.left, width: indicator.width }}
+            aria-hidden
+          />
+        )}
+        {links.map((l, i) => {
+          const active = i === activeIdx;
           return (
             <Link
               key={l.href}
               href={l.href}
-              className={`flex-1 text-center px-3 py-2 rounded-full font-semibold transition-all duration-300 ease-ios-spring ${
-                active
-                  ? "bg-white text-[#0A0A0B] shadow-[0_2px_10px_-2px_rgba(255,255,255,0.28)]"
-                  : "text-text-2 hover:text-white active:scale-95"
+              ref={(el) => {
+                tabRefs.current[i] = el;
+              }}
+              className={`relative z-10 flex-1 text-center px-2 py-2 rounded-full font-semibold transition-colors duration-300 active:scale-[0.96] ${
+                active ? "text-[#0A0A0B]" : "text-text-2 hover:text-white"
               }`}
             >
               {l.label}

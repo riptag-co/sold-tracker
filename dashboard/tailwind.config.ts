@@ -52,6 +52,9 @@ export default {
         "fade-in": "fadeIn 0.4s ease-out both",
         "scale-in": "scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both",
         "page-in": "pageIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "sheet-up": "sheetUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "ring-draw": "ringDraw 1.1s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "bar-fill": "barFill 1s cubic-bezier(0.16, 1, 0.3, 1) both",
         "live-pulse": "livePulse 2.2s ease-out infinite",
         shimmer: "shimmer 2s linear infinite",
       },
@@ -71,6 +74,18 @@ export default {
         pageIn: {
           from: { opacity: "0", transform: "translateX(24px) scale(0.99)" },
           to: { opacity: "1", transform: "translateX(0) scale(1)" },
+        },
+        sheetUp: {
+          from: { opacity: "0", transform: "translateY(40px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        ringDraw: {
+          from: { strokeDashoffset: "var(--circ)" },
+          to: { strokeDashoffset: "var(--target)" },
+        },
+        barFill: {
+          from: { transform: "scaleX(0)" },
+          to: { transform: "scaleX(var(--p, 1))" },
         },
         livePulse: {
           "0%, 100%": { opacity: "1", transform: "scale(1)" },

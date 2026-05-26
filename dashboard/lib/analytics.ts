@@ -157,6 +157,46 @@ export function paceProjection(
   return { current: todayCurrent, projected: todayCurrent, basis: "none" };
 }
 
+// Weekly series (ISO-style: Monday-start). Returns last `weeks` buckets
+// ending in the current week.
+export function weeklySeries(
+  sales: Sale[],
+  weeks: number,
+  now = new Date(),
+): { key: string; label: string; count: number }[] {
+  const out: { key: string; label: string; count: number }[] = [];
+  const startThisWeek = mondayOf(now);
+  for (let i = weeks - 1; i >= 0; i--) {
+    const ws = new Date(startThisWeek);
+    ws.setDate(ws.getDate() - i * 7);
+    const we = new Date(ws);
+    we.setDate(we.getDate() + 7);
+    const count = sales
+      .filter((s) => s.t >= ws.getTime() && s.t < we.getTime())
+      .reduce((a, b) => a + b.n, 0);
+    out.push({
+      key: `${ws.getFullYear()}-W${weekNumber(ws)}`,
+      label: ws.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      count,
+    });
+  }
+  return out;
+}
+
+function mondayOf(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  const diff = (x.getDay() + 6) % 7;
+  x.setDate(x.getDate() - diff);
+  return x;
+}
+
+function weekNumber(d: Date): number {
+  const firstJan = new Date(d.getFullYear(), 0, 1);
+  const days = Math.floor((d.getTime() - firstJan.getTime()) / 86_400_000);
+  return Math.ceil((days + firstJan.getDay() + 1) / 7);
+}
+
 // Lifetime monthly totals — useful for the stats page.
 export function salesByMonth(
   sales: Sale[],
@@ -180,6 +220,40 @@ export function salesByMonth(
         count,
       };
     });
+}
+
+// Is this shop "on fire"? Today's count >= 1.5x the per-day average
+// over the past `lookbackDays`, with a sanity floor (avg >= 1).
+export function isOnFire(
+  sales: Sale[],
+  lookbackDays = 14,
+  now = new Date(),
+): { onFire: boolean; today: number; avg: number; ratio: number } {
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const todayT = startOfToday.getTime();
+  const startLookback = todayT - lookbackDays * 86_400_000;
+
+  const today = sales.filter((s) => s.t >= todayT).reduce((a, b) => a + b.n, 0);
+  const past = sales.filter((s) => s.t >= startLookback && s.t < todayT);
+  const totalPast = past.reduce((a, b) => a + b.n, 0);
+  const avg = totalPast / lookbackDays;
+  const ratio = avg > 0 ? today / avg : 0;
+  const onFire = avg >= 1 && ratio >= 1.5;
+  return { onFire, today, avg, ratio };
+}
+
+// Sparkline: last `days` days of counts, normalized to [0..1].
+// Returns the values array AND the max so callers can label it.
+export function sparkline(
+  sales: Sale[],
+  days = 14,
+  now = new Date(),
+): { values: number[]; max: number } {
+  const series = dailySeries(sales, days, now);
+  const values = series.map((s) => s.count);
+  const max = Math.max(1, ...values);
+  return { values, max };
 }
 
 function pad(n: number): string {
