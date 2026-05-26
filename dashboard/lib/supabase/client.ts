@@ -1,10 +1,8 @@
-// Browser-side Supabase client for Client Components that need to
-// subscribe to realtime updates or call functions from the browser.
 "use client";
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient as createBaseClient } from "@supabase/supabase-js";
 
 export function createClient() {
-  return createBrowserClient(
+  return createBaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );

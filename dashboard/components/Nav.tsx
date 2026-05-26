@@ -9,20 +9,13 @@ const links = [
   { href: "/settings", label: "Settings" },
 ];
 
-export default function Nav({ email }: { email: string | null }) {
+export default function Nav() {
   const path = usePathname();
   return (
     <header className="px-4 pt-5 pb-3 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between">
-        <Link href="/" className="text-[10px] font-semibold tracking-[0.3em] uppercase text-text-2">
-          SOLD<span className="inline-block w-1 h-1 rounded-full bg-white mx-2 align-middle" />TRACKER
-        </Link>
-        {email && (
-          <form action="/auth/signout" method="post">
-            <button type="submit" className="ghost">Sign out</button>
-          </form>
-        )}
-      </div>
+      <Link href="/" className="text-[10px] font-semibold tracking-[0.3em] uppercase text-text-2">
+        SOLD<span className="inline-block w-1 h-1 rounded-full bg-white mx-2 align-middle" />TRACKER
+      </Link>
       <nav className="mt-4 flex gap-1 text-[11px] uppercase tracking-[0.16em]">
         {links.map((l) => {
           const active = path === l.href;

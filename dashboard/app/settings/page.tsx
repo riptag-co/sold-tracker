@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import Nav from "@/components/Nav";
 import PairPanel from "./PairPanel";
 import DevicesPanel from "./DevicesPanel";
@@ -8,8 +7,6 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
 
   const { data: tokens } = await supabase
     .from("device_tokens")
@@ -21,7 +18,7 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <Nav email={user.email ?? null} />
+      <Nav />
       <main className="px-4 pb-10 max-w-3xl mx-auto space-y-4">
         <h1 className="text-xl font-semibold mb-1">Settings</h1>
 
@@ -45,16 +42,6 @@ export default async function SettingsPage() {
         <section className="glass p-5">
           <h2 className="text-sm font-semibold mb-3">Paired devices</h2>
           <DevicesPanel initial={tokens ?? []} />
-        </section>
-
-        <section className="glass p-5">
-          <h2 className="text-sm font-semibold mb-1">Account</h2>
-          <p className="text-sm text-text-2 mb-4">
-            Signed in as <span className="text-white">{user.email}</span>.
-          </p>
-          <form action="/auth/signout" method="post">
-            <button type="submit" className="ghost">Sign out</button>
-          </form>
         </section>
       </main>
     </>

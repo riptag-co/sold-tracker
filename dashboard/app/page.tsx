@@ -1,7 +1,6 @@
 // Overview: hero with all-stores totals + per-store cards. Server
 // component for fast first paint; a thin client wrapper subscribes to
 // realtime snapshot inserts and refreshes via router.refresh().
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import LiveRefresh from "@/components/LiveRefresh";
@@ -21,8 +20,6 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
 
   const [{ data: stores }, { data: snapshots }, { data: errors }] =
     await Promise.all([
@@ -49,7 +46,7 @@ export default async function Home() {
 
   return (
     <>
-      <Nav email={user.email ?? null} />
+      <Nav />
       <LiveRefresh />
       <main className="px-4 pb-10 max-w-3xl mx-auto">
         {storeList.length === 0 ? (
