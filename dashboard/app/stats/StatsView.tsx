@@ -54,7 +54,12 @@ export default function StatsView({
 
   const selectedStore = stores.find((s) => s.id === storeId);
   const currency = selectedStore?.currency ?? "USD";
-  const avg = selectedStore?.avg_price_minor ?? avgAcrossStores(stores);
+  // Avg only applies to a single-store view. Across "All stores" we
+  // sum per-store revenue using each store's own avg_price.
+  const singleAvg =
+    selectedStore && selectedStore.avg_price_minor != null
+      ? selectedStore.avg_price_minor
+      : null;
   const accent = selectedStore ? colorForStore(selectedStore) : null;
 
   const series = useMemo(() => {
@@ -69,7 +74,14 @@ export default function StatsView({
   const monthTotals = useMemo(() => salesByMonth(sales), [sales]);
 
   const totalInRange = series.reduce((a, b) => a + b.count, 0);
-  const totalRev = avg != null ? totalInRange * avg : 0;
+  const totalRev =
+    storeId === "all"
+      ? allStoresRevenue ?? 0
+      : singleAvg != null
+        ? totalInRange * singleAvg
+        : 0;
+  const showRevenueHeadline =
+    storeId === "all" ? allStoresRevenue != null : singleAvg != null;
 
   const storeOptions = [
     { value: "all", label: "All stores" },
@@ -108,6 +120,51 @@ export default function StatsView({
     rows.sort((a, b) => b.count - a.count);
     return rows;
   }, [isCompare, perStoreSeries, stores]);
+
+  // Across-all-stores revenue: SUM of (per-store range count × per-store avg).
+  // This is the only correct way — averaging the avg_prices and
+  // multiplying by total count gives the wrong number whenever shops
+  // have different prices.
+  const allStoresRevenue = useMemo(() => {
+    if (storeId !== "all") return null;
+    let total = 0;
+    let anyPriced = false;
+    for (const s of stores) {
+      if (s.avg_price_minor == null) continue;
+      anyPriced = true;
+      const storeSales = snapshotsToSales(snapsByStore.get(s.id) ?? []);
+      const storeSeries =
+        range === "7d"
+          ? dailySeries(storeSales, 7)
+          : range === "1m"
+            ? dailySeries(storeSales, 30)
+            : range === "3m"
+              ? weeklySeries(storeSales, 12)
+              : monthlyContiguous(storeSales, 12);
+      const storeCount = storeSeries.reduce((a, b) => a + b.count, 0);
+      total += storeCount * s.avg_price_minor;
+    }
+    return anyPriced ? total : null;
+  }, [storeId, stores, snapsByStore, range]);
+
+  // Per-month revenue across all stores (used by the By month list
+  // when "All stores" is the filter — each month sums per-store
+  // contributions using each store's own avg).
+  const monthlyRevenueAcross = useMemo(() => {
+    if (storeId !== "all") return null;
+    const map = new Map<string, number>();
+    for (const s of stores) {
+      if (s.avg_price_minor == null) continue;
+      const months = monthlyContiguous(
+        snapshotsToSales(snapsByStore.get(s.id) ?? []),
+        12,
+      );
+      for (const m of months) {
+        map.set(m.key, (map.get(m.key) ?? 0) + m.count * s.avg_price_minor);
+      }
+    }
+    return map;
+  }, [storeId, stores, snapsByStore]);
 
   const rangeLabel = {
     "7d": "last 7 days",
@@ -173,7 +230,7 @@ export default function StatsView({
             sold {rangeLabel}
           </div>
 
-          {avg != null && (
+          {showRevenueHeadline && (
             <>
               <AnimatedNumber
                 value={totalRev}
@@ -226,9 +283,9 @@ export default function StatsView({
               <span className="num font-semibold text-white text-[15px]">
                 {selected.count}
               </span>
-              {avg != null && selected.count > 0 && (
+              {singleAvg != null && selected.count > 0 && (
                 <span className="num-tight text-money-soft font-semibold">
-                  {formatMoneyMinor(selected.count * avg, currency)}
+                  {formatMoneyMinor(selected.count * singleAvg, currency)}
                 </span>
               )}
             </div>
@@ -306,24 +363,32 @@ export default function StatsView({
             {monthTotals
               .slice(-12)
               .reverse()
-              .map((m) => (
-                <div
-                  key={m.key}
-                  className="flex justify-between items-baseline py-3 text-[14px]"
-                >
-                  <span className="text-text-2">{m.label}</span>
-                  <div className="text-right">
-                    <span className="num font-semibold">
-                      {m.count.toLocaleString("en-US")}
-                    </span>
-                    {avg != null && (
-                      <span className="num-tight text-[12px] text-money-soft ml-2.5 font-semibold">
-                        {formatMoneyMinor(m.count * avg, currency)}
+              .map((m) => {
+                const monthRev =
+                  storeId === "all"
+                    ? monthlyRevenueAcross?.get(m.key) ?? null
+                    : singleAvg != null
+                      ? m.count * singleAvg
+                      : null;
+                return (
+                  <div
+                    key={m.key}
+                    className="flex justify-between items-baseline py-3 text-[14px]"
+                  >
+                    <span className="text-text-2">{m.label}</span>
+                    <div className="text-right">
+                      <span className="num font-semibold">
+                        {m.count.toLocaleString("en-US")}
                       </span>
-                    )}
+                      {monthRev != null && monthRev > 0 && (
+                        <span className="num-tight text-[12px] text-money-soft ml-2.5 font-semibold">
+                          {formatMoneyMinor(monthRev, currency)}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
           </div>
         </section>
       )}
@@ -336,15 +401,6 @@ export default function StatsView({
         </div>
       )}
     </>
-  );
-}
-
-function avgAcrossStores(stores: Store[]): number | null {
-  const withPrices = stores.filter((s) => s.avg_price_minor != null);
-  if (withPrices.length === 0) return null;
-  return Math.round(
-    withPrices.reduce((a, s) => a + (s.avg_price_minor ?? 0), 0) /
-      withPrices.length,
   );
 }
 
