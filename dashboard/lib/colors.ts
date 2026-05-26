@@ -42,4 +42,6 @@ export const STORE_PALETTE = [
   "#EC4899", // pink
   "#FF8AA1", // rose
   "#A78BFA", // lavender
+  "#9CA3AF", // gray
+  "#F4F4F5", // white
 ];
